@@ -1,0 +1,15 @@
+# Core dependencies
+python-dateutil>=2.8.2
+typing-extensions>=4.0.0
+
+# Development dependencies
+pytest>=7.0.0
+pytest-cov>=3.0.0
+black>=22.0.0
+flake8>=4.0.0
+mypy>=0.990
+
+# Optional dependencies for future enhancements
+# numpy>=1.21.0  # For advanced calculations
+# nltk>=3.7  # For natural language processing
+# scikit-learn>=1.0.0  # For ML features
