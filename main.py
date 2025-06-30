@@ -1,4 +1,6 @@
 import time
+import json
+import requests
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from datetime import datetime
@@ -11,358 +13,529 @@ class ChatMessage:
     answer: str
     context: str
 
-class AI:
-    """AI class with intelligent functions for processing conversations"""
+class OllamaAPI:
+    """Interface for communicating with Ollama API"""
+    
+    def __init__(self, base_url: str = "https://ollama.wineme.wiwi.uni-siegen.de", model: str = "gemma3:4b"):
+        self.base_url = base_url
+        self.model = model
+        self.api_endpoint = f"{base_url}/api/generate"
+    
+    def generate_response(self, prompt: str, context: str = "") -> str:
+        """Generate response using Ollama API"""
+        try:
+            # Prepare the full prompt with context if available
+            full_prompt = f"{context}\n\n{prompt}" if context else prompt
+            
+            payload = {
+                "model": self.model,
+                "prompt": full_prompt,
+                "stream": False
+            }
+            
+            response = requests.post(self.api_endpoint, json=payload, timeout=30)
+            response.raise_for_status()
+            
+            result = response.json()
+            return result.get('response', '')
+            
+        except Exception as e:
+            raise Exception(f"API call failed: {str(e)}")
+
+class SocialHealthAI:
+    """AI class specialized for social and health issues"""
     
     def __init__(self):
-        self.knowledge_domains = {
-            'programming': ['python', 'java', 'javascript', 'c++', 'algorithms', 'data structures'],
-            'science': ['physics', 'chemistry', 'biology', 'mathematics'],
-            'technology': ['ai', 'machine learning', 'web development', 'databases'],
-            'general': ['history', 'geography', 'literature', 'arts']
-        }
-        self.context_window = []
+        self.ollama = OllamaAPI()
+        self.system_context = """
+        You are a specialized AI assistant focused exclusively on social and health issues. 
+        Your expertise covers:
+        - Mental health and wellbeing
+        - Physical health and medical information
+        - Social issues and community problems
+        - Healthcare systems and policies
+        - Public health concerns
+        - Social welfare and support systems
+        - Health education and prevention
+        - Social determinants of health
+        - Community health initiatives
+        - Healthcare accessibility and equity
         
-    def analyze_relevance(self, question: str, chat_history: List[ChatMessage]) -> Tuple[bool, float, str]:
+        You should ONLY respond to questions related to these topics.
         """
-        Intelligently analyze if a question is relevant/in-topic
-        Returns: (is_relevant, confidence_score, detected_domain)
-        """
-        print("AI: Analyzing question relevance and context...")
         
-        # Simulate intelligent analysis
-        question_lower = question.lower()
-        
-        # Check against knowledge domains
-        detected_domains = []
-        relevance_score = 0.0
-        
-        for domain, keywords in self.knowledge_domains.items():
-            domain_score = sum(1 for keyword in keywords if keyword in question_lower)
-            if domain_score > 0:
-                detected_domains.append((domain, domain_score))
-                relevance_score += domain_score
-        
-        # Consider chat history context
-        if chat_history:
-            recent_context = ' '.join([msg.question + ' ' + msg.answer for msg in chat_history[-3:]])
-            context_relevance = self._calculate_context_similarity(question, recent_context)
-            relevance_score += context_relevance * 2  # Weight context heavily
-        
-        # Normalize score
-        max_possible_score = 10.0
-        confidence = min(relevance_score / max_possible_score, 1.0)
-        
-        # Determine if relevant
-        is_relevant = confidence > 0.3  # 30% threshold
-        main_domain = detected_domains[0][0] if detected_domains else 'unknown'
-        
-        return is_relevant, confidence, main_domain
-    
-    def _calculate_context_similarity(self, question: str, context: str) -> float:
-        """Calculate similarity between question and context"""
-        # Simplified similarity calculation
-        common_words = set(question.lower().split()) & set(context.lower().split())
-        return len(common_words) / max(len(question.split()), 1)
-    
     def understand_problem(self, question: str, chat_history: List[ChatMessage]) -> Dict[str, any]:
         """
-        Intelligently understand the problem from question and history
-        Returns a structured understanding of the problem
+        Use AI to understand the problem from question and history
         """
-        print("AI: Deep analysis of the problem...")
+        print("AI: Analyzing problem in context of social and health issues...")
+        
+        # Create context from chat history
+        history_context = ""
+        if chat_history:
+            recent_messages = chat_history[-2:]
+            history_context = "Previous conversation about social/health topics:\n"
+            for msg in recent_messages:
+                history_context += f"Q: {msg.question}\nA: {msg.answer[:150]}...\n"
+        
+        understanding_prompt = f"""
+        {self.system_context}
+        
+        Analyze this question in the context of social and health issues:
+        Question: "{question}"
+        
+        {history_context}
+        
+        Please respond in this exact format only:
+        INTENT: [health_inquiry/social_concern/prevention_advice/policy_question/support_seeking/general_wellness/medical_information]
+        HEALTH_ENTITIES: [comma-separated health-related terms, or 'none' if no health entities]
+        SOCIAL_ENTITIES: [comma-separated social-related terms, or 'none' if no social entities]
+        COMPLEXITY: [simple/moderate/complex]
+        REQUIRES_CONTEXT: [yes/no]
+        APPROACH: [direct_answer/contextual_response/provide_resources/educational_response]
+        """
+        
+        response = self.ollama.generate_response(understanding_prompt)
+        return self._parse_understanding_response(response)
+    
+    def _parse_understanding_response(self, response: str) -> Dict[str, any]:
+        """Parse the AI understanding response"""
+        lines = response.strip().split('\n')
         
         understanding = {
-            'main_intent': self._extract_intent(question),
-            'entities': self._extract_entities(question),
-            'complexity': self._assess_complexity(question),
-            'requires_context': len(chat_history) > 0,
-            'suggested_approach': self._suggest_approach(question, chat_history)
+            'main_intent': '',
+            'health_entities': [],
+            'social_entities': [],
+            'complexity': '',
+            'requires_context': False,
+            'suggested_approach': ''
         }
+        
+        for line in lines:
+            if "INTENT:" in line:
+                understanding['main_intent'] = line.split(":", 1)[-1].strip()
+            elif "HEALTH_ENTITIES:" in line:
+                entities_str = line.split(":", 1)[-1].strip()
+                if entities_str.lower() != 'none':
+                    understanding['health_entities'] = [e.strip() for e in entities_str.split(',') if e.strip()]
+            elif "SOCIAL_ENTITIES:" in line:
+                entities_str = line.split(":", 1)[-1].strip()
+                if entities_str.lower() != 'none':
+                    understanding['social_entities'] = [e.strip() for e in entities_str.split(',') if e.strip()]
+            elif "COMPLEXITY:" in line:
+                understanding['complexity'] = line.split(":", 1)[-1].strip()
+            elif "REQUIRES_CONTEXT:" in line:
+                understanding['requires_context'] = line.split(":", 1)[-1].strip().lower() == 'yes'
+            elif "APPROACH:" in line:
+                understanding['suggested_approach'] = line.split(":", 1)[-1].strip()
         
         return understanding
     
-    def _extract_intent(self, question: str) -> str:
-        """Extract the main intent from the question"""
-        # Simulate intent extraction
-        if any(word in question.lower() for word in ['how', 'explain', 'what']):
-            return 'explanation'
-        elif any(word in question.lower() for word in ['why', 'reason']):
-            return 'reasoning'
-        elif any(word in question.lower() for word in ['create', 'make', 'build']):
-            return 'creation'
-        elif any(word in question.lower() for word in ['fix', 'debug', 'error']):
-            return 'troubleshooting'
-        else:
-            return 'general_query'
-    
-    def _extract_entities(self, question: str) -> List[str]:
-        """Extract key entities from the question"""
-        # Simplified entity extraction
-        entities = []
-        for domain, keywords in self.knowledge_domains.items():
-            for keyword in keywords:
-                if keyword in question.lower():
-                    entities.append(keyword)
-        return entities
-    
-    def _assess_complexity(self, question: str) -> str:
-        """Assess the complexity of the question"""
-        word_count = len(question.split())
-        if word_count < 10:
-            return 'simple'
-        elif word_count < 25:
-            return 'moderate'
-        else:
-            return 'complex'
-    
-    def _suggest_approach(self, question: str, history: List[ChatMessage]) -> str:
-        """Suggest an approach for answering"""
-        if history and len(history) > 2:
-            return 'contextual_response'
-        elif 'example' in question.lower():
-            return 'provide_examples'
-        elif 'compare' in question.lower():
-            return 'comparative_analysis'
-        else:
-            return 'direct_answer'
-    
-    def check_data_availability(self, understanding: Dict, chat_history: List[ChatMessage]) -> bool:
+    def is_question_in_topic(self, question: str, chat_history: List[ChatMessage]) -> Tuple[bool, str]:
         """
-        Intelligently check if we have enough data to answer
+        Check if question is related to social and health issues
+        Returns: (is_in_topic, topic_category)
         """
-        print("AI: Checking data availability and requirements...")
+        print("AI: Checking if question relates to social and health issues...")
         
-        # Check if we have relevant context
-        if understanding['requires_context'] and not chat_history:
-            return False
+        # Create context from chat history
+        history_context = ""
+        if chat_history:
+            recent_messages = chat_history[-3:]
+            history_context = "Previous conversation context:\n"
+            for msg in recent_messages:
+                history_context += f"Q: {msg.question}\nA: {msg.answer[:100]}...\n"
         
-        # Check if entities are recognized
-        if not understanding['entities'] and understanding['complexity'] != 'simple':
-            return False
+        topic_check_prompt = f"""
+        {self.system_context}
         
-        # Check if we can handle the intent
-        supported_intents = ['explanation', 'reasoning', 'creation', 'troubleshooting', 'general_query']
-        if understanding['main_intent'] not in supported_intents:
-            return False
+        Determine if this question is related to social and health issues:
+        Question: "{question}"
         
-        return True
+        {history_context}
+        
+        Social and health topics include: mental health, physical health, medical conditions, healthcare systems, 
+        social welfare, community health, public health, social issues, health education, health policy, 
+        social determinants of health, healthcare accessibility, social support systems.
+        
+        Please respond in this exact format only:
+        IN_TOPIC: [YES/NO]
+        CATEGORY: [mental_health/physical_health/social_issues/healthcare_system/public_health/health_education/unrelated]
+        REASONING: [brief explanation]
+        """
+        
+        response = self.ollama.generate_response(topic_check_prompt)
+        return self._parse_topic_response(response)
     
-    def generate_answer(self, question: str, understanding: Dict, chat_history: List[ChatMessage], 
-                       answer_type: str = 'main') -> str:
-        """
-        Generate an intelligent answer based on understanding
-        """
-        print(f"AI: Generating {answer_type} answer using neural processing...")
+    def _parse_topic_response(self, response: str) -> Tuple[bool, str]:
+        """Parse the topic relevance response"""
+        lines = response.strip().split('\n')
+        in_topic = False
+        category = "unrelated"
         
-        # Simulate intelligent answer generation
-        base_response = f"Based on my analysis of your question about {', '.join(understanding['entities'])}, "
+        for line in lines:
+            if "IN_TOPIC:" in line:
+                in_topic = "YES" in line.upper()
+            elif "CATEGORY:" in line:
+                category = line.split(":", 1)[-1].strip()
         
-        if answer_type == 'main':
-            if understanding['main_intent'] == 'explanation':
-                return base_response + f"here's a detailed explanation: [Intelligent response about {question}]"
-            elif understanding['main_intent'] == 'creation':
-                return base_response + f"here's how to create it: [Step-by-step guide for {question}]"
-            elif understanding['main_intent'] == 'troubleshooting':
-                return base_response + f"here's the solution: [Debugging steps for {question}]"
-            else:
-                return base_response + f"here's what you need to know: [Comprehensive answer to {question}]"
-        else:
-            # Side answer with additional context
-            return f"Additional insights: Based on our previous discussion and current trends, [Extended context for {question}]"
+        return in_topic, category
     
-    def enhance_with_context(self, question: str, chat_history: List[ChatMessage]) -> str:
+    def do_we_have_data(self, understanding: Dict, chat_history: List[ChatMessage]) -> bool:
         """
-        Enhance question with relevant context from history
+        Check if we have sufficient data to provide a helpful response
+        """
+        print("AI: Checking data availability for social/health response...")
+        
+        data_check_prompt = f"""
+        {self.system_context}
+        
+        Can this social/health question be answered appropriately?
+        
+        Question Intent: {understanding['main_intent']}
+        Health Entities: {', '.join(understanding['health_entities']) if understanding['health_entities'] else 'none'}
+        Social Entities: {', '.join(understanding['social_entities']) if understanding['social_entities'] else 'none'}
+        Complexity: {understanding['complexity']}
+        Chat History Available: {'Yes' if chat_history else 'No'}
+        
+        Consider if this requires specialized medical advice that should be referred to professionals.
+        
+        Respond with only: CAN_ANSWER: [YES/NO]
+        """
+        
+        response = self.ollama.generate_response(data_check_prompt)
+        return "YES" in response.upper()
+    
+    def add_custom_prompt(self, question: str, chat_history: List[ChatMessage]) -> str:
+        """
+        Enhance question with relevant context from conversation history
         """
         if not chat_history:
             return question
         
-        # Extract relevant context
-        recent_topics = [msg.context for msg in chat_history[-3:] if msg.context]
-        context_summary = ' '.join(recent_topics)
+        # Get recent context focused on social/health topics
+        recent_context = ""
+        for msg in chat_history[-2:]:
+            recent_context += f"Previous discussion: {msg.question} -> {msg.answer[:100]}... "
         
-        return f"{question} [Context: {context_summary}]"
+        enhancement_prompt = f"""
+        {self.system_context}
+        
+        Given this social/health conversation history: {recent_context}
+        
+        And this new question: {question}
+        
+        Provide an enhanced version that incorporates relevant context for a comprehensive social/health response.
+        Respond with just the enhanced question, nothing else.
+        """
+        
+        enhanced = self.ollama.generate_response(enhancement_prompt)
+        return enhanced.strip()
     
-    def generate_clarification_request(self, understanding: Dict) -> str:
+    def generate_main_answer(self, question: str, understanding: Dict, chat_history: List[ChatMessage]) -> str:
         """
-        Generate an intelligent clarification request
+        Generate main answer focused on social and health issues
         """
-        if not understanding['entities']:
-            return "I notice your question lacks specific details. Could you provide more context about what specific aspect you're interested in?"
-        elif understanding['complexity'] == 'complex':
-            return "Your question covers multiple aspects. Could you help me understand which part is most important to you?"
+        print("AI: Generating main answer for social/health inquiry...")
+        
+        # Create context from chat history
+        context = ""
+        if chat_history and understanding['requires_context']:
+            context = "Conversation context on social/health topics:\n"
+            for msg in chat_history[-3:]:
+                context += f"Previous Q: {msg.question}\nPrevious A: {msg.answer[:200]}...\n\n"
+        
+        # Create specialized prompt based on intent
+        if understanding['main_intent'] == 'health_inquiry':
+            prompt = f"Provide comprehensive health information and guidance for: {question}"
+        elif understanding['main_intent'] == 'social_concern':
+            prompt = f"Address this social issue with practical insights and solutions: {question}"
+        elif understanding['main_intent'] == 'prevention_advice':
+            prompt = f"Provide prevention strategies and health promotion advice for: {question}"
+        elif understanding['main_intent'] == 'policy_question':
+            prompt = f"Explain relevant health/social policies and their implications for: {question}"
+        elif understanding['main_intent'] == 'support_seeking':
+            prompt = f"Provide supportive guidance and available resources for: {question}"
+        elif understanding['main_intent'] == 'medical_information':
+            prompt = f"Provide educational medical information while emphasizing professional consultation for: {question}"
         else:
-            return f"I want to make sure I understand correctly. Are you asking specifically about {understanding['main_intent']} regarding {', '.join(understanding['entities'][:2])}?"
-    
-    def generate_examples(self, domain: str) -> List[str]:
-        """
-        Generate relevant examples based on domain
-        """
-        examples = {
-            'programming': [
-                "How do I implement a binary search in Python?",
-                "Explain object-oriented programming concepts",
-                "What's the difference between lists and tuples?"
-            ],
-            'science': [
-                "Explain quantum entanglement in simple terms",
-                "How does photosynthesis work?",
-                "What causes gravitational waves?"
-            ],
-            'technology': [
-                "How does machine learning differ from AI?",
-                "Explain blockchain technology",
-                "What are microservices in web development?"
-            ],
-            'general': [
-                "What were the causes of World War I?",
-                "Explain the water cycle",
-                "How does the stock market work?"
-            ]
-        }
+            prompt = f"Provide a comprehensive response addressing the social and health aspects of: {question}"
         
-        return examples.get(domain, examples['general'])
+        # Add important disclaimers for health-related responses
+        system_prompt = f"""
+        {self.system_context}
+        
+        Important: Always include appropriate disclaimers for medical advice and emphasize 
+        consulting healthcare professionals for serious health concerns.
+        
+        {context}
+        
+        {prompt}
+        """
+        
+        return self.ollama.generate_response(system_prompt)
+    
+    def generate_side_answer(self, question: str, understanding: Dict, chat_history: List[ChatMessage]) -> str:
+        """
+        Generate additional context and resources for complex social/health questions
+        """
+        print("AI: Generating additional context and resources...")
+        
+        side_prompt = f"""
+        {self.system_context}
+        
+        Provide additional resources, related information, and broader context for this social/health question: {question}
+        
+        Include:
+        - Related health/social concepts
+        - Available support resources
+        - Prevention strategies if applicable
+        - Community or policy considerations
+        
+        Focus on practical, actionable information.
+        """
+        
+        return self.ollama.generate_response(side_prompt)
+    
+    def ask_for_clarification(self, understanding: Dict) -> str:
+        """
+        Generate clarification request for unclear social/health questions
+        """
+        clarification_prompt = f"""
+        {self.system_context}
+        
+        A user asked a social/health question but I need clarification.
+        
+        Question details:
+        - Intent: {understanding['main_intent']}
+        - Health entities: {', '.join(understanding['health_entities']) if understanding['health_entities'] else 'none'}
+        - Social entities: {', '.join(understanding['social_entities']) if understanding['social_entities'] else 'none'}
+        - Complexity: {understanding['complexity']}
+        
+        Generate a helpful clarification request that guides them to provide more specific 
+        information about their health or social concern.
+        Be empathetic and supportive. Respond with just the clarification request.
+        """
+        
+        clarification = self.ollama.generate_response(clarification_prompt)
+        return clarification.strip()
+    
+    def give_contact_information(self, topic_category: str) -> str:
+        """
+        Provide relevant contact information for social/health issues
+        """
+        contact_prompt = f"""
+        {self.system_context}
+        
+        Generate appropriate contact information and resources for {topic_category} issues.
+        Include relevant helplines, organizations, or professional services.
+        Make contacts realistic but clearly fictional (use example.org domains).
+        
+        Respond with formatted contact information.
+        """
+        
+        contact_info = self.ollama.generate_response(contact_prompt)
+        return contact_info.strip()
+    
+    def display_error_and_examples(self, topic_category: str) -> List[str]:
+        """
+        Generate examples of social and health questions
+        """
+        examples_prompt = f"""
+        {self.system_context}
+        
+        Generate exactly 3 example questions related to {topic_category} that I can help with.
+        Make them practical, specific, and representative of real concerns people might have.
+        
+        Respond in this exact format:
+        1. [example question]
+        2. [example question]
+        3. [example question]
+        """
+        
+        response = self.ollama.generate_response(examples_prompt)
+        
+        # Parse examples
+        examples = []
+        lines = response.strip().split('\n')
+        for line in lines:
+            if line.strip() and (line.strip().startswith(('1.', '2.', '3.')) or line.strip().startswith('-')):
+                example = line.split('.', 1)[-1].strip() if '.' in line else line.strip()
+                if example:
+                    examples.append(example)
+        
+        return examples[:3]
 
 
-class ConversationSystem:
+class SocialHealthConversationSystem:
+    """Conversation system specialized for social and health issues"""
+    
     def __init__(self):
         self.chat_history: List[ChatMessage] = []
-        self.ai = AI()
-        self.clarification_count: int = 0
-        self.current_domain: str = 'general'
+        self.ai = SocialHealthAI()
+        self.clarification_attempts: int = 0
+        self.current_topic_category: str = ''
         
     def start_point(self):
-        """Entry point for the conversation system"""
+        """Entry point following the flowchart structure"""
+        print(f"AI: Connected to Ollama API at {self.ai.ollama.base_url}")
+        print(f"AI: Using model: {self.ai.ollama.model}")
+        print("AI: Specialized for Social and Health Issues")
+        print("=" * 50)
+        
         while True:
-            # Ask a question
-            question = input("\nPlease ask a question (or type 'exit' to quit): ")
-            
-            if question.lower() == 'exit':
-                print("Goodbye!")
-                break
+            try:
+                # Ask a question
+                question = input("\nPlease ask a question about social or health issues (or type 'exit' to quit): ")
                 
-            # Check if chat exists
-            if self.chat_exists():
-                # Understand the problem based on new + old data
-                understanding = self.ai.understand_problem(question, self.chat_history)
-            else:
-                # Create a new chat
-                self.create_new_chat()
-                # Understand the problem based on the new data
-                understanding = self.ai.understand_problem(question, [])
-            
-            # Process the question
-            self.process_question(question, understanding)
+                if question.lower() == 'exit':
+                    print("Take care of yourself! Goodbye!")
+                    break
+                
+                # Follow flowchart: Check if chat exists
+                if self.the_chat_exists():
+                    # Understand problem based on new + old data
+                    understanding = self.ai.understand_problem(question, self.chat_history)
+                else:
+                    # Create new chat and understand problem based on new data
+                    self.create_a_new_chat()
+                    understanding = self.ai.understand_problem(question, [])
+                
+                # Check if question is in topic (social/health issues)
+                is_in_topic, topic_category = self.ai.is_question_in_topic(question, self.chat_history)
+                self.current_topic_category = topic_category
+                
+                if is_in_topic:
+                    # Check if we have data
+                    if self.ai.do_we_have_data(understanding, self.chat_history):
+                        # Add custom prompt and generate response
+                        enhanced_question = self.ai.add_custom_prompt(question, self.chat_history)
+                        
+                        # Generate main answer
+                        main_answer = self.ai.generate_main_answer(enhanced_question, understanding, self.chat_history)
+                        
+                        # For complex questions, add side answer
+                        if understanding['complexity'] == 'complex':
+                            side_answer = self.ai.generate_side_answer(enhanced_question, understanding, self.chat_history)
+                            final_answer = f"{main_answer}\n\n--- Additional Resources & Context ---\n{side_answer}"
+                        else:
+                            final_answer = main_answer
+                        
+                        # Display final answer
+                        print(f"\nAI Response:\n{final_answer}")
+                        
+                        # Store in chat history
+                        self.chat_history.append(ChatMessage(
+                            timestamp=datetime.now(),
+                            question=question,
+                            answer=final_answer,
+                            context=topic_category
+                        ))
+                        
+                        self.clarification_attempts = 0
+                        
+                    else:
+                        # Ask for clarification
+                        clarification_request = self.ai.ask_for_clarification(understanding)
+                        print(f"\nAI: {clarification_request}")
+                        
+                        clarification = input("Please provide more details: ")
+                        if clarification:
+                            enhanced_question = f"{question} - Additional details: {clarification}"
+                            new_understanding = self.ai.understand_problem(enhanced_question, self.chat_history)
+                            self.process_enhanced_question(enhanced_question, new_understanding)
+                
+                else:
+                    # Question not related to social/health issues
+                    if self.clarification_attempts < 3:
+                        self.clarification_attempts += 1
+                        print(f"\nAI: I specialize in social and health issues. Your question seems to be about {topic_category}.")
+                        print("Could you rephrase your question to focus on health or social concerns?")
+                        
+                        clarification = input("Rephrased question: ")
+                        if clarification:
+                            new_understanding = self.ai.understand_problem(clarification, self.chat_history)
+                            self.process_enhanced_question(clarification, new_understanding)
+                    else:
+                        # After 3 attempts, provide contact info and examples
+                        print("\nAI: I apologize, but I can only assist with social and health issues.")
+                        
+                        # Give contact information
+                        contact_info = self.ai.give_contact_information("general")
+                        print(f"\nFor other topics, you might want to contact:\n{contact_info}")
+                        
+                        # Display examples of what I can help with
+                        print(f"\nHere are examples of social and health questions I can help with:")
+                        examples = self.ai.display_error_and_examples("social_and_health")
+                        for i, example in enumerate(examples, 1):
+                            print(f"   {i}. {example}")
+                        
+                        self.clarification_attempts = 0
+                        
+            except Exception as e:
+                print(f"Error occurred: {e}")
+                print("Please try again or check your connection.")
     
-    def chat_exists(self) -> bool:
-        """Check if there's an existing chat history"""
+    def the_chat_exists(self) -> bool:
+        """Check if chat history exists"""
         return len(self.chat_history) > 0
     
-    def create_new_chat(self):
-        """Initialize a new chat session"""
-        print("AI: Initializing new conversation session with enhanced context tracking...")
+    def create_a_new_chat(self):
+        """Initialize new chat session"""
+        print("AI: Starting new conversation about social and health topics...")
         self.chat_history = []
-        self.clarification_count = 0
+        self.clarification_attempts = 0
     
-    def process_question(self, question: str, understanding: Dict):
-        """Main processing logic for the question"""
-        # Use AI to check if the question is in topic
-        is_relevant, confidence, domain = self.ai.analyze_relevance(question, self.chat_history)
-        self.current_domain = domain
-        
-        print(f"AI: Relevance analysis complete - Confidence: {confidence:.2%}, Domain: {domain}")
-        
-        if is_relevant:
-            # Check if we have data using AI
-            if self.ai.check_data_availability(understanding, self.chat_history):
-                # Add custom prompt and process
-                enhanced_question = self.ai.enhance_with_context(question, self.chat_history)
+    def process_enhanced_question(self, question: str, understanding: Dict):
+        """Process question that has been enhanced with clarification"""
+        try:
+            is_in_topic, topic_category = self.ai.is_question_in_topic(question, self.chat_history)
+            
+            if is_in_topic and self.ai.do_we_have_data(understanding, self.chat_history):
+                enhanced_question = self.ai.add_custom_prompt(question, self.chat_history)
+                main_answer = self.ai.generate_main_answer(enhanced_question, understanding, self.chat_history)
                 
-                # Generate main answer using AI
-                main_answer = self.ai.generate_answer(
-                    enhanced_question, understanding, self.chat_history, 'main'
-                )
-                
-                # Generate side answer if needed (for complex questions)
-                final_answer = main_answer
                 if understanding['complexity'] == 'complex':
-                    side_answer = self.ai.generate_answer(
-                        enhanced_question, understanding, self.chat_history, 'side'
-                    )
-                    final_answer = f"{main_answer}\n\n{side_answer}"
+                    side_answer = self.ai.generate_side_answer(enhanced_question, understanding, self.chat_history)
+                    final_answer = f"{main_answer}\n\n--- Additional Resources & Context ---\n{side_answer}"
+                else:
+                    final_answer = main_answer
                 
-                # Display final answer
-                print(f"\nAI Final Answer: {final_answer}")
+                print(f"\nAI Response:\n{final_answer}")
                 
-                # Store in chat history
                 self.chat_history.append(ChatMessage(
                     timestamp=datetime.now(),
                     question=question,
                     answer=final_answer,
-                    context=domain
+                    context=topic_category
                 ))
                 
-                self.clarification_count = 0  # Reset clarification count
-                
+                self.clarification_attempts = 0
             else:
-                # Ask for clarification using AI
-                clarification_request = self.ai.generate_clarification_request(understanding)
-                print(f"\nAI: {clarification_request}")
+                print("AI: I still need more specific information about the health or social aspect of your concern.")
                 
-                # Get clarification
-                clarification = input("Your clarification: ")
-                if clarification:
-                    # Reprocess with clarification
-                    enhanced_question = f"{question} - {clarification}"
-                    new_understanding = self.ai.understand_problem(enhanced_question, self.chat_history)
-                    self.process_question(enhanced_question, new_understanding)
-                
-        else:
-            # Check if tried less than 3 times
-            if self.clarification_count < 3:
-                clarification_request = self.ai.generate_clarification_request(understanding)
-                print(f"\nAI: I'm having difficulty understanding your question. {clarification_request}")
-                self.clarification_count += 1
-                
-                # Get clarification
-                clarification = input("Your clarification: ")
-                if clarification:
-                    # Reprocess with clarification
-                    self.process_question(clarification, self.ai.understand_problem(clarification, self.chat_history))
-            else:
-                # Give contact information based on topic
-                self.give_contact_information(domain)
-                # Display error and give examples
-                self.display_error_and_examples(domain)
-                self.clarification_count = 0  # Reset for next question
-    
-    def give_contact_information(self, domain: str):
-        """Provide contact information based on domain"""
-        contacts = {
-            'programming': "Programming Support Team: code-help@example.com",
-            'science': "Science Department: science@example.com",
-            'technology': "Tech Support: tech@example.com",
-            'general': "General Inquiries: info@example.com"
-        }
-        
-        print(f"\nAI: For specialized assistance with {domain} topics, please contact:")
-        print(f"AI: {contacts.get(domain, contacts['general'])}")
-    
-    def display_error_and_examples(self, domain: str):
-        """Display error message and provide examples using AI"""
-        print("\nAI: I apologize, but I couldn't process your question after multiple attempts.")
-        print(f"AI: Here are some examples of {domain} questions I can help with:")
-        
-        examples = self.ai.generate_examples(domain)
-        for i, example in enumerate(examples, 1):
-            print(f"   {i}. {example}")
+        except Exception as e:
+            print(f"Error processing enhanced question: {e}")
 
 
 # Main execution
 if __name__ == "__main__":
-    print("Welcome to the AI-Powered Conversation System!")
-    print("This system uses intelligent analysis to understand and answer your questions.")
+    print("Welcome to the Social and Health Issues AI Assistant!")
+    print("I specialize in providing information and support for:")
+    print("• Mental health and wellbeing")
+    print("• Physical health and medical information") 
+    print("• Social issues and community concerns")
+    print("• Healthcare systems and policies")
+    print("• Public health topics")
+    print("• Health education and prevention")
+    print("\nNote: For serious medical emergencies, please contact emergency services immediately.")
+    print("=" * 70)
     
-    system = ConversationSystem()
-    system.start_point()
+    try:
+        system = SocialHealthConversationSystem()
+        system.start_point()
+    except KeyboardInterrupt:
+        print("\n\nTake care! Goodbye!")
+    except Exception as e:
+        print(f"\nSystem error: {e}")
+        print("Please check your connection and try again.")
