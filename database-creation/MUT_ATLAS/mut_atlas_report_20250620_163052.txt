@@ -1,0 +1,119 @@
+MUT-ATLAS Scraping Report
+Generated: 2025-06-20 16:30:52
+==================================================
+
+Total Locations: 8677
+Failed Requests: 0
+
+Top 10 Cities by Number of Locations:
+  Berlin: 564
+  Bremen: 310
+  München: 285
+  Köln: 175
+  Würzburg: 121
+  Nürnberg: 115
+  Hamburg: 108
+  Bremerhaven: 102
+  Stuttgart: 96
+  Augsburg: 90
+
+Categories:
+  Beratung: 2529
+  Selbsthilfe: 2355
+  Psychotherapeutische Behandlung: 670
+  Wohnen: 589
+  Psychiatrische Behandlung: 495
+  Freizeit- und Arbeitsangebote: 349
+  Beratung,Freizeit- und Arbeitsangebote: 270
+  Beratung,Selbsthilfe: 176
+  Psychiatrische Behandlung,Psychotherapeutische Behandlung: 166
+  Psychosomatische Reha: 119
+  Weitere Behandlungsverfahren: 95
+  Beratung,Psychotherapeutische Behandlung: 89
+  Beratung,Wohnen: 71
+  unknown: 61
+  Beratung,Freizeit- und Arbeitsangebote,Selbsthilfe: 60
+  Beratung,Weiterbildung: 60
+  Weiterbildung: 42
+  Beratung,Freizeit- und Arbeitsangebote,Wohnen: 36
+  Freizeit- und Arbeitsangebote,Selbsthilfe: 31
+  Psychotherapeutische Behandlung,Weitere Behandlungsverfahren: 28
+  Freizeit- und Arbeitsangebote,Weiterbildung: 26
+  Beratung,Selbsthilfe,Weiterbildung: 24
+  Freizeit- und Arbeitsangebote,Wohnen: 24
+  Beratung,Psychotherapeutische Behandlung,Selbsthilfe: 24
+  Beratung,Weitere Behandlungsverfahren: 23
+  Beratung,Psychiatrische Behandlung: 22
+  Psychiatrische Behandlung,Psychosomatische Reha: 19
+  Selbsthilfe,Weiterbildung: 19
+  Psychiatrische Behandlung,Psychotherapeutische Behandlung,Weitere Behandlungsverfahren: 16
+  Psychotherapeutische Behandlung,Wohnen: 16
+  Psychiatrische Behandlung,Weitere Behandlungsverfahren: 14
+  Beratung,Freizeit- und Arbeitsangebote,Weiterbildung: 9
+  Beratung,Psychiatrische Behandlung,Psychotherapeutische Behandlung: 9
+  Beratung,Psychotherapeutische Behandlung,Wohnen: 8
+  Psychotherapeutische Behandlung,Weiterbildung: 7
+  Freizeit- und Arbeitsangebote,Weitere Behandlungsverfahren: 6
+  Psychiatrische Behandlung,Wohnen: 6
+  Freizeit- und Arbeitsangebote,Psychotherapeutische Behandlung: 5
+  Beratung,Freizeit- und Arbeitsangebote,Selbsthilfe,Weiterbildung: 5
+  Beratung,Psychiatrische Behandlung,Psychotherapeutische Behandlung,Weitere Behandlungsverfahren: 5
+  Beratung,Weitere Behandlungsverfahren,Wohnen: 4
+  Beratung,Freizeit- und Arbeitsangebote,Selbsthilfe,Wohnen: 4
+  Beratung,Freizeit- und Arbeitsangebote,Psychotherapeutische Behandlung,Wohnen: 4
+  Beratung,Psychotherapeutische Behandlung,Weiterbildung: 4
+  Weitere Behandlungsverfahren,Wohnen: 4
+  Beratung,Psychotherapeutische Behandlung,Weitere Behandlungsverfahren: 4
+  Freizeit- und Arbeitsangebote,Psychiatrische Behandlung,Psychosomatische Reha,Psychotherapeutische Behandlung: 4
+  Beratung,Freizeit- und Arbeitsangebote,Psychotherapeutische Behandlung: 3
+  Psychiatrische Behandlung,Psychosomatische Reha,Psychotherapeutische Behandlung: 3
+  Beratung,Freizeit- und Arbeitsangebote,Psychotherapeutische Behandlung,Selbsthilfe: 3
+  Beratung,Psychosomatische Reha,Selbsthilfe: 3
+  Beratung,Freizeit- und Arbeitsangebote,Psychiatrische Behandlung,Psychosomatische Reha,Psychotherapeutische Behandlung,Weitere Behandlungsverfahren: 3
+  Freizeit- und Arbeitsangebote,Selbsthilfe,Wohnen: 2
+  Psychiatrische Behandlung,Psychotherapeutische Behandlung,Wohnen: 2
+  Freizeit- und Arbeitsangebote,Psychotherapeutische Behandlung,Wohnen: 2
+  Psychiatrische Behandlung,Psychotherapeutische Behandlung,Weiterbildung: 2
+  Beratung,Psychosomatische Reha: 2
+  Beratung,Selbsthilfe,Weitere Behandlungsverfahren: 2
+  Beratung,Psychiatrische Behandlung,Psychotherapeutische Behandlung,Weiterbildung: 2
+  Beratung,Psychosomatische Reha,Psychotherapeutische Behandlung,Wohnen: 2
+  Beratung,Psychiatrische Behandlung,Weitere Behandlungsverfahren: 2
+  Beratung,Selbsthilfe,Weiterbildung,Wohnen: 1
+  Freizeit- und Arbeitsangebote,Selbsthilfe,Weiterbildung: 1
+  Psychosomatische Reha,Psychotherapeutische Behandlung: 1
+  Beratung,Freizeit- und Arbeitsangebote,Weitere Behandlungsverfahren: 1
+  Beratung,Freizeit- und Arbeitsangebote,Psychiatrische Behandlung,Psychotherapeutische Behandlung: 1
+  Beratung,Selbsthilfe,Wohnen: 1
+  Freizeit- und Arbeitsangebote,Psychiatrische Behandlung,Wohnen: 1
+  Beratung,Psychiatrische Behandlung,Psychosomatische Reha,Psychotherapeutische Behandlung: 1
+  Beratung,Psychotherapeutische Behandlung,Weiterbildung,Wohnen: 1
+  Psychotherapeutische Behandlung,Weiterbildung,Wohnen: 1
+  Freizeit- und Arbeitsangebote,Psychotherapeutische Behandlung,Selbsthilfe,Weiterbildung: 1
+  Psychotherapeutische Behandlung,Selbsthilfe: 1
+  Psychosomatische Reha,Weitere Behandlungsverfahren,Wohnen: 1
+  Freizeit- und Arbeitsangebote,Psychosomatische Reha: 1
+  Beratung,Weiterbildung,Wohnen: 1
+  Psychiatrische Behandlung,Selbsthilfe: 1
+  Beratung,Freizeit- und Arbeitsangebote,Psychiatrische Behandlung,Wohnen: 1
+  Psychotherapeutische Behandlung,Selbsthilfe,Weitere Behandlungsverfahren: 1
+  Beratung,Psychiatrische Behandlung,Wohnen: 1
+  Beratung,Freizeit- und Arbeitsangebote,Psychiatrische Behandlung,Psychotherapeutische Behandlung,Selbsthilfe: 1
+  Beratung,Psychotherapeutische Behandlung,Weiterbildung,Weitere Behandlungsverfahren: 1
+  Psychiatrische Behandlung,Psychosomatische Reha,Weitere Behandlungsverfahren: 1
+  Beratung,Freizeit- und Arbeitsangebote,Psychiatrische Behandlung: 1
+  Beratung,Freizeit- und Arbeitsangebote,Selbsthilfe,Weitere Behandlungsverfahren: 1
+  Beratung,Freizeit- und Arbeitsangebote,Weitere Behandlungsverfahren,Wohnen: 1
+  Beratung,Freizeit- und Arbeitsangebote,Psychotherapeutische Behandlung,Selbsthilfe,Weitere Behandlungsverfahren,Wohnen: 1
+  Beratung,Freizeit- und Arbeitsangebote,Selbsthilfe,Weitere Behandlungsverfahren,Wohnen: 1
+  Beratung,Psychiatrische Behandlung,Psychotherapeutische Behandlung,Weiterbildung,Weitere Behandlungsverfahren: 1
+  Beratung,Psychiatrische Behandlung,Psychotherapeutische Behandlung,Selbsthilfe,Weitere Behandlungsverfahren: 1
+  Beratung,Psychosomatische Reha,Psychotherapeutische Behandlung: 1
+  Beratung,Psychosomatische Reha,Selbsthilfe,Wohnen: 1
+  Psychiatrische Behandlung,Psychosomatische Reha,Psychotherapeutische Behandlung,Wohnen: 1
+  Freizeit- und Arbeitsangebote,Psychiatrische Behandlung,Psychosomatische Reha,Psychotherapeutische Behandlung,Wohnen: 1
+  Freizeit- und Arbeitsangebote,Psychiatrische Behandlung,Psychosomatische Reha,Psychotherapeutische Behandlung,Weitere Behandlungsverfahren: 1
+  Psychiatrische Behandlung,Psychosomatische Reha,Psychotherapeutische Behandlung,Weitere Behandlungsverfahren: 1
+  Beratung,Psychiatrische Behandlung,Psychotherapeutische Behandlung,Wohnen: 1
+  Psychosomatische Reha,Wohnen: 1
+  Freizeit- und Arbeitsangebote,Psychotherapeutische Behandlung,Weitere Behandlungsverfahren: 1
