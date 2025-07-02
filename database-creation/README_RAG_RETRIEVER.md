@@ -78,6 +78,29 @@ This demonstrates how to:
 2. Format the retrieved content for an LLM
 3. Generate a response that combines information from both databases
 
+### Integration with Ollama
+
+The example script now supports using Ollama instead of OpenAI:
+
+```bash
+python example_rag_integration.py --model gemma3:4b --ollama-url https://ollama.wineme.wiwi.uni-siegen.de
+```
+
+Options:
+- `--model` - Ollama model to use (default: gemma3:4b)
+- `--ollama-url` - Ollama API base URL (default: https://ollama.wineme.wiwi.uni-siegen.de)
+
+This integration allows you to:
+1. Use the same Ollama API setup as in the main chatbot application
+2. Test RAG retrieval with local or self-hosted LLMs
+3. Avoid OpenAI API key requirements and costs
+
+For convenience, you can also use the provided batch script:
+
+```bash
+run_rag_example.bat
+```
+
 ## Result Format
 
 The `retrieve_content` function returns a dictionary with the following structure:
