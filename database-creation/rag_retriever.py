@@ -24,6 +24,7 @@
 # ==============================================================================
 import re
 import numpy as np
+import torch
 from typing import Dict, List, Optional, Tuple, Union, Any
 
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -190,10 +191,13 @@ def initialize_retrieval_components(
         Tuple containing initialized components:
         (dense_embeddings, sparse_embeddings, qdrant_client, reranker)
     """
+    # Check if CUDA is available and set device accordingly
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
     # Initialize dense embeddings model
     dense_embeddings = HuggingFaceEmbeddings(
         model_name=DENSE_EMBEDDING_MODEL_NAME,
-        model_kwargs={'device': 'cuda'},
+        model_kwargs={'device': device},
         encode_kwargs={'normalize_embeddings': True}
     )
 
@@ -203,8 +207,8 @@ def initialize_retrieval_components(
     # Connect to Qdrant
     qdrant_client = QdrantClient(host=qdrant_host, port=qdrant_port)
 
-    # Initialize reranker
-    reranker = MxbaiRerankV2(RERANKER_MODEL_NAME)
+    # Initialize reranker with appropriate device
+    reranker = MxbaiRerankV2(RERANKER_MODEL_NAME, device=device)
 
     return dense_embeddings, sparse_embeddings, qdrant_client, reranker
 
