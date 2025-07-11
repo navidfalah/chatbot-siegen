@@ -41,8 +41,8 @@ API_KEY = os.getenv("RAG_API_KEY", secrets.token_urlsafe(32))
 API_KEY_NAME = "X-API-Key"
 
 # Fixed Qdrant settings for localhost
-QDRANT_HOST = "localhost"
-QDRANT_PORT = 6333
+QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
+QDRANT_PORT = int(os.getenv("QDRANT_PORT", 6333))
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -54,7 +54,7 @@ app = FastAPI(
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Specify allowed origins in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

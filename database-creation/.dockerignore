@@ -1,0 +1,53 @@
+# .dockerignore
+
+# Exclude python virtual environments
+venv/
+*.venv
+.env
+
+# Exclude python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Exclude git directory
+.git/
+.gitignore
+
+# Exclude Docker files
+Dockerfile
+.dockerignore
+
+# Exclude local user settings
+.vscode/
+
+# Exclude data files and directories
+*.csv
+*.json
+*.log
+*.txt
+!requirements*.txt
+
+# Exclude test files
+test_*.py
+*_test.py
+
+# Exclude documentation
+*.md
+!README*.md
+
+# Exclude specific directories not needed in the container
+AWMF/
+MUT_ATLAS/
+__pycache__/
+
+# Exclude browser driver files
+*.exe
+chromedriver*
+geckodriver*
+
+# Exclude IDE specific files
+.idea/
+*.iml
+*.ipynb_checkpoints/

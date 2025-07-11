@@ -13,6 +13,7 @@ mxbai-rerank>=0.1.6
 sentence-transformers>=5.0.0
 transformers>=4.53.0
 fastembed-gpu>= 0.7.1
+huggingface_hub[hf_xet]
 
 # PyTorch follow https://pytorch.org/get-started/locally/
 
