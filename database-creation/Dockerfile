@@ -1,56 +1,57 @@
-# Dockerfile (Corrected)
+# Stage 1: The Builder
+# Use the official python-slim image as a lean base with Python pre-installed.
+FROM python:3.12-slim AS builder
 
-# --- Build Stage ---
-FROM nvidia/cuda:12.9.1-cudnn-runtime-ubuntu24.04 AS builder
-
-# Set environment variables
-ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
+ENV HF_HOME="/app/cache/huggingface"
+ENV VENV_PATH="/opt/venv"
+# Add VENV_PATH to the PATH
+ENV PATH="$VENV_PATH/bin:$PATH"
 
-# Install Python, pip, and the venv package
-# --- THIS IS THE CORRECTED LINE ---
-RUN apt-get update && \
-    apt-get install -y python3.12 python3-pip python3.12-venv && \
-    rm -rf /var/lib/apt/lists/*
-
-# Set a virtual environment for a clean package installation
 WORKDIR /app
-RUN python3.12 -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy only the requirements file first to leverage Docker caching
+# Install only build-essential for any C extensions, then create the venv.
+# Python is already in the base image.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential && \
+    rm -rf /var/lib/apt/lists/* && \
+    python3 -m venv $VENV_PATH
+
+# Install Python dependencies
 COPY requirements-api.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128 && \
+    pip install --no-cache-dir -r requirements-api.txt
 
-# Install PyTorch and other requirements into the virtual environment
-# Corrected to use the standard CUDA 12.1 wheel
-RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
-RUN pip install --no-cache-dir -r requirements-api.txt
+# Copy application code and cache models
+COPY rag_api.py rag_retriever_worker.py cache_models.py ./
+RUN python cache_models.py && \
+    # Clean up the temporary download cache
+    rm -rf ${HF_HOME}/xet
 
+#-----------------------------------------------------------------------------------
 
-# --- Final Stage ---
-# Use the lean runtime image for the final product
-FROM nvidia/cuda:12.9.1-cudnn-runtime-ubuntu24.04
+# Stage 2: The Final Image
+# Start from the same lean python-slim base.
+FROM python:3.12-slim
 
-# Set environment variables
-ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
+ENV HF_HOME="/app/cache/huggingface"
+ENV VENV_PATH="/opt/venv"
+ENV PATH="$VENV_PATH/bin:$PATH"
 
-# Install Python runtime
+# Install only the essential shared libraries needed by torch/numpy at runtime.
 RUN apt-get update && \
-    apt-get install -y python3.12 && \
+    apt-get install -y --no-install-recommends libgomp1 && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy the virtual environment from the builder stage
+# Copy the virtual environment, model cache, and application code from the builder
+COPY --from=builder ${VENV_PATH} ${VENV_PATH}
+COPY --from=builder ${HF_HOME} ${HF_HOME}
 WORKDIR /app
-COPY --from=builder /opt/venv /opt/venv
+COPY --from=builder /app /app
 
-# Copy the application code
-COPY . .
-
-# Set the PATH to use the venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-# Expose the port [cite: 3]
+# Expose the port the app runs on
 EXPOSE 8000
 
 # Define the command to run your application [cite: 3]
