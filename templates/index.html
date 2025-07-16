@@ -18,91 +18,117 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
 
         .header {
             background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(15px);
             border-bottom: 1px solid #b8e6cc;
-            padding: 1rem 2rem;
+            padding: 1.25rem 2rem;
             display: flex;
             align-items: center;
             justify-content: center;
             position: sticky;
             top: 0;
             z-index: 100;
+            box-shadow: 0 2px 12px rgba(45, 90, 61, 0.08);
         }
 
         .header-title {
-            font-size: 1.125rem;
+            font-size: 1.25rem;
             font-weight: 600;
             color: #1e5f74;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.75rem;
+        }
+
+        .header-icon {
+            font-size: 1.5rem;
+            color: #2d5a3d;
         }
 
         .main-container {
             flex: 1;
             display: flex;
             flex-direction: column;
-            max-width: 768px;
+            max-width: 1200px;
             margin: 0 auto;
             width: 100%;
+            height: 100%;
         }
 
         .chat-container {
             flex: 1;
             overflow-y: auto;
-            padding: 1rem;
+            padding: 2rem;
+            padding-bottom: 0;
             scroll-behavior: smooth;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
         }
 
         .message {
-            margin-bottom: 1.5rem;
             display: flex;
             gap: 1rem;
             max-width: 100%;
+            animation: fadeInUp 0.4s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .message-avatar {
-            width: 40px;
-            height: 40px;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.2rem;
+            font-size: 1.25rem;
             flex-shrink: 0;
             margin-top: 0.25rem;
             background: white;
-            box-shadow: 0 2px 8px rgba(45, 90, 61, 0.15);
+            box-shadow: 0 4px 12px rgba(45, 90, 61, 0.15);
             border: 2px solid #b8e6cc;
+            transition: all 0.3s ease;
         }
 
         .user-message .message-avatar {
             background: white;
-            color: #2d5a3d;
-            border-color: #5fb3d3;
+            color: #4a5568;
+            border-color: #e2e8f0;
+            box-shadow: 0 4px 12px rgba(45, 90, 61, 0.15);
         }
 
         .bot-message .message-avatar {
             background: white;
-            color: #1e5f74;
-            border-color: #5fb3d3;
+            color: #2d5a3d;
+            border-color: #e2e8f0;
+            box-shadow: 0 4px 12px rgba(45, 90, 61, 0.15);
         }
 
         .message-content {
-            flex: 1;
-            line-height: 1.6;
-            font-size: 0.95rem;
+            line-height: 1.7;
+            font-size: 1rem;
             word-wrap: break-word;
-            padding-top: 0.25rem;
-            background: rgba(255, 255, 255, 0.7);
-            padding: 1rem 1.25rem;
-            border-radius: 20px;
+            padding: 1.5rem 2rem;
+            border-radius: 24px;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(232, 220, 198, 0.5);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow-wrap: break-word;
         }
 
         .user-message {
@@ -110,31 +136,69 @@
         }
 
         .user-message .message-content {
-            background: linear-gradient(135deg, #f4e6d1 0%, #ede0c8 100%);
+            background: linear-gradient(135deg, #e8f5e8 0%, #d4f1d4 100%);
             text-align: right;
+            max-width: 75%;
+            margin-left: auto;
+            border-color: #b8e6cc;
+            box-shadow: 0 4px 16px rgba(45, 90, 61, 0.1);
         }
 
         .bot-message .message-content {
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.95);
+            max-width: 85%;
+            border-color: #b8e6cc;
+            box-shadow: 0 4px 16px rgba(95, 179, 211, 0.1);
+        }
+
+        .message-content:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(45, 90, 61, 0.15);
+        }
+
+        /* Enhanced styling for formatted content */
+        .message-content strong {
+            color: #1e5f74;
+            font-weight: 600;
+        }
+
+        .message-content ul {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+        }
+
+        .message-content li {
+            margin: 0.25rem 0;
+            color: #2d5a3d;
+        }
+
+        .message-content a {
+            color: #5fb3d3;
+            text-decoration: none;
+            word-break: break-all;
+        }
+
+        .message-content a:hover {
+            text-decoration: underline;
         }
 
         .typing-indicator {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.75rem;
             color: #5fb3d3;
-            font-size: 0.875rem;
+            font-size: 0.9rem;
             margin-top: 0.25rem;
         }
 
         .typing-dots {
             display: flex;
-            gap: 4px;
+            gap: 6px;
         }
 
         .typing-dot {
-            width: 6px;
-            height: 6px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
             background: linear-gradient(135deg, #5fb3d3 0%, #1e5f74 100%);
             animation: typing 1.4s infinite ease-in-out;
@@ -150,38 +214,39 @@
             }
             40% {
                 opacity: 1;
-                transform: scale(1);
+                transform: scale(1.1);
             }
         }
 
         .input-container {
-            border-top: 1px solid #b8e6cc;
-            padding: 1rem 2rem;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
+            padding: 2rem;
+            background: transparent;
             position: sticky;
             bottom: 0;
+            margin-top: 3rem;
         }
 
         .input-wrapper {
-            max-width: 768px;
+            max-width: 1200px;
             margin: 0 auto;
             position: relative;
         }
 
         .input-form {
             display: flex;
-            gap: 0.75rem;
+            gap: 1rem;
             align-items: flex-end;
+            max-width: 600px;
+            margin: 0 auto;
         }
 
         .input-field {
             flex: 1;
-            min-height: 50px;
-            max-height: 120px;
-            padding: 0.875rem 1.25rem;
+            min-height: 54px;
+            max-height: 140px;
+            padding: 1rem 1.5rem;
             border: 2px solid #b8e6cc;
-            border-radius: 25px;
+            border-radius: 27px;
             font-size: 1rem;
             font-family: inherit;
             resize: none;
@@ -189,12 +254,14 @@
             transition: all 0.3s ease;
             background: rgba(255, 255, 255, 0.9);
             color: #2d5a3d;
+            box-shadow: 0 2px 8px rgba(45, 90, 61, 0.08);
         }
 
         .input-field:focus {
             border-color: #5fb3d3;
-            box-shadow: 0 0 0 3px rgba(95, 179, 211, 0.1);
+            box-shadow: 0 0 0 4px rgba(95, 179, 211, 0.12), 0 4px 16px rgba(95, 179, 211, 0.15);
             background: rgba(255, 255, 255, 1);
+            transform: translateY(-2px);
         }
 
         .input-field::placeholder {
@@ -202,8 +269,8 @@
         }
 
         .send-button {
-            width: 50px;
-            height: 50px;
+            width: 54px;
+            height: 54px;
             border: none;
             border-radius: 50%;
             background: linear-gradient(135deg, #5fb3d3 0%, #1e5f74 100%);
@@ -214,13 +281,17 @@
             justify-content: center;
             transition: all 0.3s ease;
             flex-shrink: 0;
-            box-shadow: 0 4px 12px rgba(95, 179, 211, 0.3);
+            box-shadow: 0 4px 16px rgba(95, 179, 211, 0.3);
         }
 
         .send-button:hover:not(:disabled) {
             background: linear-gradient(135deg, #1e5f74 0%, #184f62 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(95, 179, 211, 0.4);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(95, 179, 211, 0.4);
+        }
+
+        .send-button:active:not(:disabled) {
+            transform: translateY(-1px);
         }
 
         .send-button:disabled {
@@ -231,14 +302,14 @@
         }
 
         .send-icon {
-            width: 22px;
-            height: 22px;
+            width: 24px;
+            height: 24px;
             fill: currentColor;
         }
 
         .loading-spinner {
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             border: 2px solid rgba(255,255,255,0.3);
             border-top: 2px solid white;
             border-radius: 50%;
@@ -252,58 +323,89 @@
 
         .welcome-message {
             text-align: center;
-            padding: 3rem 2rem;
+            padding: 4rem 2rem;
             color: #5fb3d3;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
 
         .welcome-title {
-            font-size: 1.5rem;
-            font-weight: 600;
+            font-size: 2rem;
+            font-weight: 700;
             color: #1e5f74;
-            margin-bottom: 0.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #1e5f74 0%, #5fb3d3 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .welcome-subtitle {
-            font-size: 1rem;
-            margin-bottom: 2rem;
+            font-size: 1.125rem;
+            margin-bottom: 3rem;
+            color: #7ba88a;
+            max-width: 600px;
         }
 
         .example-prompts {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1rem;
-            max-width: 600px;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            max-width: 900px;
             margin: 0 auto;
         }
 
         .example-prompt {
-            background: rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.9);
             border: 2px solid #b8e6cc;
             border-radius: 20px;
-            padding: 1.25rem;
+            padding: 1.75rem;
             text-align: left;
             cursor: pointer;
             transition: all 0.3s ease;
-            font-size: 0.875rem;
+            font-size: 0.95rem;
             backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .example-prompt::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #5fb3d3 0%, #1e5f74 100%);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
         }
 
         .example-prompt:hover {
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 1);
             border-color: #5fb3d3;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(95, 179, 211, 0.15);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 32px rgba(95, 179, 211, 0.2);
+        }
+
+        .example-prompt:hover::before {
+            transform: scaleX(1);
         }
 
         .example-prompt-title {
             font-weight: 600;
             color: #1e5f74;
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
         }
 
         .example-prompt-desc {
             color: #7ba88a;
-            font-size: 0.8rem;
+            font-size: 0.9rem;
+            line-height: 1.5;
         }
 
         .empty-state {
@@ -313,7 +415,7 @@
             justify-content: center;
         }
 
-        /* Circular elements enhancement */
+        /* Enhanced visual effects */
         .header::before {
             content: '';
             position: absolute;
@@ -321,21 +423,32 @@
             left: -10%;
             width: 120%;
             height: 200%;
-            background: radial-gradient(circle, rgba(95, 179, 211, 0.1) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(95, 179, 211, 0.08) 0%, transparent 70%);
             pointer-events: none;
+            animation: pulse 4s ease-in-out infinite;
         }
 
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        /* Responsive design */
         @media (max-width: 768px) {
             .header {
                 padding: 1rem;
             }
             
             .input-container {
-                padding: 1rem;
+                padding: 1.5rem;
+                background: transparent;
+                margin-top: 2rem;
             }
             
             .chat-container {
-                padding: 1rem 0.5rem;
+                padding: 1.5rem 1rem;
+                padding-bottom: 0;
+                gap: 1.5rem;
             }
             
             .message {
@@ -344,29 +457,80 @@
             
             .example-prompts {
                 grid-template-columns: 1fr;
+                gap: 1rem;
             }
             
             .welcome-message {
                 padding: 2rem 1rem;
             }
 
-            .message-avatar {
-                width: 36px;
-                height: 36px;
+            .welcome-title {
+                font-size: 1.75rem;
+            }
+
+            .welcome-subtitle {
                 font-size: 1rem;
             }
 
-            .send-button {
-                width: 46px;
-                height: 46px;
+            .message-avatar {
+                width: 40px;
+                height: 40px;
+                font-size: 1.1rem;
             }
+
+            .send-button {
+                width: 50px;
+                height: 50px;
+            }
+
+            .input-field {
+                min-height: 50px;
+            }
+
+            .message-content {
+                padding: 1.25rem 1.5rem;
+                font-size: 0.95rem;
+            }
+
+            .user-message .message-content {
+                max-width: 85%;
+            }
+
+            .bot-message .message-content {
+                max-width: 95%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .bot-message .message-content {
+                max-width: 100%;
+            }
+        }
+
+        /* Scrollbar styling */
+        .chat-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb {
+            background: rgba(95, 179, 211, 0.3);
+            border-radius: 3px;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(95, 179, 211, 0.5);
         }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="header-title">
-            <span>🏥</span>
+            <span class="header-icon">🩺</span>
             HealthAI Assistant
         </div>
     </div>
@@ -381,7 +545,7 @@
                     <div class="example-prompts">
                         <div class="example-prompt" onclick="fillInput('What are the symptoms of seasonal allergies?')">
                             <div class="example-prompt-title">Health Symptoms</div>
-                            <div class="example-prompt-desc">Learn about common health conditions and symptoms</div>
+                            <div class="example-prompt-desc">Learn about common health conditions and their symptoms</div>
                         </div>
                         <div class="example-prompt" onclick="fillInput('Where can I find mental health services in Siegen?')">
                             <div class="example-prompt-title">Local Services</div>
@@ -428,10 +592,55 @@
         const inputForm = document.getElementById('input-form');
         let isLoading = false;
 
+        // Function to process markdown formatting
+        function processMarkdown(text) {
+            // Convert **text** to <strong>text</strong>
+            text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            // Convert bullet points (* text) to proper HTML lists
+            const lines = text.split('\n');
+            let processedLines = [];
+            let inList = false;
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                if (line.startsWith('* ')) {
+                    if (!inList) {
+                        processedLines.push('<ul>');
+                        inList = true;
+                    }
+                    // Remove the asterisk and add as list item
+                    processedLines.push('<li>' + line.substring(2).trim() + '</li>');
+                } else {
+                    if (inList) {
+                        processedLines.push('</ul>');
+                        inList = false;
+                    }
+                    if (line) {
+                        processedLines.push(line);
+                    }
+                }
+            }
+            
+            // Close any open list
+            if (inList) {
+                processedLines.push('</ul>');
+            }
+            
+            // Join lines and convert remaining line breaks to <br>
+            text = processedLines.join('\n').replace(/\n/g, '<br>');
+            
+            // Convert URLs to clickable links
+            text = text.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank">$1</a>');
+            
+            return text;
+        }
+
         // Auto-resize textarea
         inputField.addEventListener('input', function() {
             this.style.height = 'auto';
-            this.style.height = this.scrollHeight + 'px';
+            this.style.height = Math.min(this.scrollHeight, 140) + 'px';
         });
 
         // Handle form submission
@@ -452,7 +661,7 @@
             inputField.value = text;
             inputField.focus();
             inputField.style.height = 'auto';
-            inputField.style.height = inputField.scrollHeight + 'px';
+            inputField.style.height = Math.min(inputField.scrollHeight, 140) + 'px';
         }
 
         function hideEmptyState() {
@@ -524,7 +733,7 @@
             messageDiv.className = 'message bot-message';
             
             messageDiv.innerHTML = `
-                <div class="message-avatar">🤖</div>
+                <div class="message-avatar">🩺</div>
                 <div class="message-content">
                     <div class="typing-indicator">
                         <div class="typing-dots">
@@ -553,11 +762,14 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${sender}-message`;
             
-            const avatar = sender === 'user' ? '👤' : '🤖';
+            const avatar = sender === 'user' ? '👤' : '🩺';
+            
+            // Process markdown formatting for bot messages
+            const formattedText = sender === 'bot' ? processMarkdown(text) : text.replace(/\n/g, '<br>');
             
             messageDiv.innerHTML = `
                 <div class="message-avatar">${avatar}</div>
-                <div class="message-content">${text}</div>
+                <div class="message-content">${formattedText}</div>
             `;
             
             chatContainer.appendChild(messageDiv);
@@ -568,6 +780,14 @@
         window.addEventListener('load', () => {
             inputField.focus();
         });
+
+        // Smooth scrolling for new messages
+        function smoothScrollToBottom() {
+            chatContainer.scrollTo({
+                top: chatContainer.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
     </script>
 </body>
 </html>
