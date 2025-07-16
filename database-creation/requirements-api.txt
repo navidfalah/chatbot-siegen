@@ -18,5 +18,4 @@ huggingface_hub[hf_xet]
 # PyTorch follow https://pytorch.org/get-started/locally/
 
 # Core dependencies
-python-dateutil>=2.8.2
 typing-extensions>=4.0.0

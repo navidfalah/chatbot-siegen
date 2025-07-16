@@ -1,53 +1,74 @@
-# .dockerignore
-
-# Exclude python virtual environments
-venv/
-*.venv
-.env
-
-# Exclude python cache
+# Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Exclude git directory
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
 .git/
 .gitignore
 
-# Exclude Docker files
-Dockerfile
+# Docker
+Dockerfile*
 .dockerignore
 
-# Exclude local user settings
-.vscode/
-
-# Exclude data files and directories
-*.csv
-*.json
-*.log
-*.txt
-!requirements*.txt
-
-# Exclude test files
-test_*.py
-*_test.py
-
-# Exclude documentation
+# Documentation
+README.md
 *.md
-!README*.md
 
-# Exclude specific directories not needed in the container
-AWMF/
-MUT_ATLAS/
-__pycache__/
+# Logs
+*.log
+logs/
 
-# Exclude browser driver files
-*.exe
-chromedriver*
-geckodriver*
+# Cache directories
+.cache/
+.huggingface/
+cache/
 
-# Exclude IDE specific files
-.idea/
-*.iml
-*.ipynb_checkpoints/
+# Testing
+.pytest_cache/
+.coverage
+.tox/
+tests/
+
+# Environment files
+.env.local
+.env.development
+.env.test
+
+# Temporary files
+tmp/
+temp/
