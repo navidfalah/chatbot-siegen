@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HealthAI Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #e8f5e8 0%, #e1f2f7 100%);
+            color: #2d5a3d;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid #b8e6cc;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1e5f74;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 768px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            scroll-behavior: smooth;
+        }
+
+        .message {
+            margin-bottom: 1.5rem;
+            display: flex;
+            gap: 1rem;
+            max-width: 100%;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+            margin-top: 0.25rem;
+            background: white;
+            box-shadow: 0 2px 8px rgba(45, 90, 61, 0.15);
+            border: 2px solid #b8e6cc;
+        }
+
+        .user-message .message-avatar {
+            background: white;
+            color: #2d5a3d;
+            border-color: #5fb3d3;
+        }
+
+        .bot-message .message-avatar {
+            background: white;
+            color: #1e5f74;
+            border-color: #5fb3d3;
+        }
+
+        .message-content {
+            flex: 1;
+            line-height: 1.6;
+            font-size: 0.95rem;
+            word-wrap: break-word;
+            padding-top: 0.25rem;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 1rem 1.25rem;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(232, 220, 198, 0.5);
+        }
+
+        .user-message {
+            flex-direction: row-reverse;
+        }
+
+        .user-message .message-content {
+            background: linear-gradient(135deg, #f4e6d1 0%, #ede0c8 100%);
+            text-align: right;
+        }
+
+        .bot-message .message-content {
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #5fb3d3;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #5fb3d3 0%, #1e5f74 100%);
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% {
+                opacity: 0.3;
+                transform: scale(0.8);
+            }
+            40% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .input-container {
+            border-top: 1px solid #b8e6cc;
+            padding: 1rem 2rem;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            bottom: 0;
+        }
+
+        .input-wrapper {
+            max-width: 768px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .input-form {
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-end;
+        }
+
+        .input-field {
+            flex: 1;
+            min-height: 50px;
+            max-height: 120px;
+            padding: 0.875rem 1.25rem;
+            border: 2px solid #b8e6cc;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: none;
+            outline: none;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.9);
+            color: #2d5a3d;
+        }
+
+        .input-field:focus {
+            border-color: #5fb3d3;
+            box-shadow: 0 0 0 3px rgba(95, 179, 211, 0.1);
+            background: rgba(255, 255, 255, 1);
+        }
+
+        .input-field::placeholder {
+            color: #7ba88a;
+        }
+
+        .send-button {
+            width: 50px;
+            height: 50px;
+            border: none;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #5fb3d3 0%, #1e5f74 100%);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(95, 179, 211, 0.3);
+        }
+
+        .send-button:hover:not(:disabled) {
+            background: linear-gradient(135deg, #1e5f74 0%, #184f62 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(95, 179, 211, 0.4);
+        }
+
+        .send-button:disabled {
+            background: #b8e6cc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 2px 8px rgba(45, 90, 61, 0.1);
+        }
+
+        .send-icon {
+            width: 22px;
+            height: 22px;
+            fill: currentColor;
+        }
+
+        .loading-spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .welcome-message {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: #5fb3d3;
+        }
+
+        .welcome-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1e5f74;
+            margin-bottom: 0.5rem;
+        }
+
+        .welcome-subtitle {
+            font-size: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .example-prompts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .example-prompt {
+            background: rgba(255, 255, 255, 0.8);
+            border: 2px solid #b8e6cc;
+            border-radius: 20px;
+            padding: 1.25rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.875rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .example-prompt:hover {
+            background: rgba(255, 255, 255, 0.95);
+            border-color: #5fb3d3;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(95, 179, 211, 0.15);
+        }
+
+        .example-prompt-title {
+            font-weight: 600;
+            color: #1e5f74;
+            margin-bottom: 0.25rem;
+        }
+
+        .example-prompt-desc {
+            color: #7ba88a;
+            font-size: 0.8rem;
+        }
+
+        .empty-state {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Circular elements enhancement */
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -10%;
+            width: 120%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(95, 179, 211, 0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 1rem;
+            }
+            
+            .input-container {
+                padding: 1rem;
+            }
+            
+            .chat-container {
+                padding: 1rem 0.5rem;
+            }
+            
+            .message {
+                gap: 0.75rem;
+            }
+            
+            .example-prompts {
+                grid-template-columns: 1fr;
+            }
+            
+            .welcome-message {
+                padding: 2rem 1rem;
+            }
+
+            .message-avatar {
+                width: 36px;
+                height: 36px;
+                font-size: 1rem;
+            }
+
+            .send-button {
+                width: 46px;
+                height: 46px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-title">
+            <span>🏥</span>
+            HealthAI Assistant
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="chat-container" id="chat-container">
+            <div class="empty-state" id="empty-state">
+                <div class="welcome-message">
+                    <h1 class="welcome-title">How can I help you today?</h1>
+                    <p class="welcome-subtitle">I'm here to assist with health questions and social services in the Siegen area.</p>
+                    
+                    <div class="example-prompts">
+                        <div class="example-prompt" onclick="fillInput('What are the symptoms of seasonal allergies?')">
+                            <div class="example-prompt-title">Health Symptoms</div>
+                            <div class="example-prompt-desc">Learn about common health conditions and symptoms</div>
+                        </div>
+                        <div class="example-prompt" onclick="fillInput('Where can I find mental health services in Siegen?')">
+                            <div class="example-prompt-title">Local Services</div>
+                            <div class="example-prompt-desc">Find healthcare and social services in your area</div>
+                        </div>
+                        <div class="example-prompt" onclick="fillInput('What should I do if I have a minor injury?')">
+                            <div class="example-prompt-title">First Aid</div>
+                            <div class="example-prompt-desc">Get guidance on basic medical care and emergencies</div>
+                        </div>
+                        <div class="example-prompt" onclick="fillInput('How can I maintain a healthy lifestyle?')">
+                            <div class="example-prompt-title">Wellness Tips</div>
+                            <div class="example-prompt-desc">Advice on nutrition, exercise, and healthy habits</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-container">
+            <div class="input-wrapper">
+                <form class="input-form" id="input-form">
+                    <textarea 
+                        class="input-field" 
+                        id="input-field" 
+                        placeholder="Message HealthAI Assistant..." 
+                        rows="1"
+                        autocomplete="off"
+                    ></textarea>
+                    <button type="submit" class="send-button" id="send-button">
+                        <svg class="send-icon" viewBox="0 0 24 24">
+                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById('chat-container');
+        const emptyState = document.getElementById('empty-state');
+        const inputField = document.getElementById('input-field');
+        const sendButton = document.getElementById('send-button');
+        const inputForm = document.getElementById('input-form');
+        let isLoading = false;
+
+        // Auto-resize textarea
+        inputField.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = this.scrollHeight + 'px';
+        });
+
+        // Handle form submission
+        inputForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            sendMessage();
+        });
+
+        // Handle Enter key (without Shift)
+        inputField.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        function fillInput(text) {
+            inputField.value = text;
+            inputField.focus();
+            inputField.style.height = 'auto';
+            inputField.style.height = inputField.scrollHeight + 'px';
+        }
+
+        function hideEmptyState() {
+            if (emptyState) {
+                emptyState.style.display = 'none';
+            }
+        }
+
+        async function sendMessage() {
+            const message = inputField.value.trim();
+            if (!message || isLoading) return;
+
+            hideEmptyState();
+            setLoadingState(true);
+
+            // Add user message
+            appendMessage(message, 'user');
+            
+            // Clear input
+            inputField.value = '';
+            inputField.style.height = 'auto';
+
+            // Show typing indicator
+            const typingElement = showTypingIndicator();
+
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ question: message })
+                });
+
+                removeTypingIndicator(typingElement);
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                const botMessage = data.answer || "I'm sorry, I couldn't process your request. Please try again.";
+
+                appendMessage(botMessage, 'bot');
+
+            } catch (error) {
+                console.error('Error:', error);
+                removeTypingIndicator(typingElement);
+                appendMessage("I'm experiencing technical difficulties. Please check your connection and try again.", 'bot');
+            } finally {
+                setLoadingState(false);
+            }
+        }
+
+        function setLoadingState(loading) {
+            isLoading = loading;
+            sendButton.disabled = loading;
+            inputField.disabled = loading;
+
+            if (loading) {
+                sendButton.innerHTML = '<div class="loading-spinner"></div>';
+            } else {
+                sendButton.innerHTML = '<svg class="send-icon" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>';
+            }
+        }
+
+        function showTypingIndicator() {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message bot-message';
+            
+            messageDiv.innerHTML = `
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    <div class="typing-indicator">
+                        <div class="typing-dots">
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                        </div>
+                        <span>HealthAI is typing...</span>
+                    </div>
+                </div>
+            `;
+            
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            return messageDiv;
+        }
+
+        function removeTypingIndicator(element) {
+            if (element && element.parentNode) {
+                element.parentNode.removeChild(element);
+            }
+        }
+
+        function appendMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            
+            const avatar = sender === 'user' ? '👤' : '🤖';
+            
+            messageDiv.innerHTML = `
+                <div class="message-avatar">${avatar}</div>
+                <div class="message-content">${text}</div>
+            `;
+            
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Focus input on page load
+        window.addEventListener('load', () => {
+            inputField.focus();
+        });
+    </script>
+</body>
+</html>
