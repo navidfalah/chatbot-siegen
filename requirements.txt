@@ -8,6 +8,8 @@ pytest-cov>=3.0.0
 black>=22.0.0
 flake8>=4.0.0
 mypy>=0.990
+langdetect
+flask
 
 # Optional dependencies for future enhancements
 # numpy>=1.21.0  # For advanced calculations
