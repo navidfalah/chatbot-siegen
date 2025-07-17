@@ -96,35 +96,56 @@ class RAGDatabaseAPI:
             print(f"❌ Unexpected RAG error: {e}")
             return []
 
-class OllamaAPI:
-    def __init__(self, base_url: str = "https://ollama.wineme.wiwi.uni-siegen.de", model: str = "gemma3:4b"):
-        self.base_url = base_url
+class GeminiAPI:
+    def __init__(self, api_key: str = "AIzaSyANNUH02lwIxpBDqGFPMldCzuqZvU2KQ-0", model: str = "gemini-2.0-flash"):
+        self.api_key = api_key
         self.model = model
-        self.api_endpoint = f"{base_url}/api/generate"
+        self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
+        self.api_endpoint = f"{self.base_url}/{model}:generateContent"
 
     def generate_response(self, prompt: str, context: str = "", language: str = "en") -> str:
-        """Generate response using Ollama API in requested language."""
+        """Generate response using Gemini API in requested language."""
         full_prompt = f"{context}\n\n{prompt}" if context else prompt
-        # If prompt is not in the target language, translate it (expand this for real use).
-        prompt_for_llm = full_prompt  # Translator.translate(full_prompt, language) # Uncomment/implement for prod
-        payload = {
-            "model": self.model,
-            "prompt": prompt_for_llm,
-            "stream": False
+        
+        headers = {
+            "Content-Type": "application/json",
+            "X-goog-api-key": self.api_key
         }
+        
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {
+                            "text": full_prompt
+                        }
+                    ]
+                }
+            ]
+        }
+        
         try:
-            response = requests.post(self.api_endpoint, json=payload, timeout=30)
+            response = requests.post(self.api_endpoint, headers=headers, json=payload, timeout=30)
             response.raise_for_status()
             result = response.json()
-            output_text = result.get("response", "")
-            # Optionally: translate LLM output back to original language if needed
-            return output_text
+            
+            # Extract the response text from Gemini's response format
+            if "candidates" in result and len(result["candidates"]) > 0:
+                if "content" in result["candidates"][0]:
+                    if "parts" in result["candidates"][0]["content"]:
+                        if len(result["candidates"][0]["content"]["parts"]) > 0:
+                            return result["candidates"][0]["content"]["parts"][0].get("text", "")
+            
+            return "Sorry, I couldn't generate a response."
+            
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"Gemini API call failed: {str(e)}")
         except Exception as e:
-            raise Exception(f"API call failed: {str(e)}")
+            raise Exception(f"Error processing Gemini response: {str(e)}")
 
 class RAGEnhancedSocialHealthAI:
     def __init__(self, rag_api_key: str = None):
-        self.ollama = OllamaAPI()
+        self.gemini = GeminiAPI()
         self.rag_db = RAGDatabaseAPI(rag_api_key)
         self.system_context_en = (
             "You are a specialized AI assistant for social and health issues in the Siegen area. "
@@ -257,7 +278,7 @@ class RAGEnhancedSocialHealthAI:
                 "APPROACH: [direct_answer/contextual_response/provide_resources/educational_response/local_services]"
             )
         
-        response = self.ollama.generate_response(prompt, language=language)
+        response = self.gemini.generate_response(prompt, language=language)
         return self._parse_understanding_response(response, language)
 
     def _parse_understanding_response(self, response: str, language: str) -> Dict[str, any]:
@@ -340,7 +361,7 @@ class RAGEnhancedSocialHealthAI:
                 "REASONING: [brief explanation]"
             )
         
-        response = self.ollama.generate_response(prompt, language=language)
+        response = self.gemini.generate_response(prompt, language=language)
         return self._parse_topic_response(response, language)
 
     def _parse_topic_response(self, response: str, language: str) -> Tuple[bool, str]:
@@ -398,7 +419,7 @@ class RAGEnhancedSocialHealthAI:
                 "Respond with only: CAN_ANSWER: [YES/NO]"
             )
         
-        response = self.ollama.generate_response(prompt, language=language)
+        response = self.gemini.generate_response(prompt, language=language)
         return ("ja" in response.lower()) or ("yes" in response.lower())
 
     def generate_rag_enhanced_response(self, question: str, understanding: Dict, chat_history: List[ChatMessage], rag_results: List[RAGResult], rag_context: str, language: str) -> str:
@@ -469,7 +490,7 @@ class RAGEnhancedSocialHealthAI:
                 f"Please provide a comprehensive response that incorporates the local services information and conversation context where relevant."
             )
         
-        return self.ollama.generate_response(full_context, language=language)
+        return self.gemini.generate_response(full_context, language=language)
 
     def ask_for_clarification(self, understanding: Dict, chat_history: List[ChatMessage], language: str) -> str:
         # Build conversation context
@@ -508,7 +529,7 @@ class RAGEnhancedSocialHealthAI:
                 "me find the best local resources in Siegen. Be empathetic and supportive. Respond with just the clarification request."
             )
         
-        return self.ollama.generate_response(prompt, language=language).strip()
+        return self.gemini.generate_response(prompt, language=language).strip()
 
     def display_error_and_examples(self, topic_category: str, language: str) -> List[str]:
         if language == "de":
@@ -530,7 +551,7 @@ class RAGEnhancedSocialHealthAI:
                 " 1. [example question]\n2. [example question]\n3. [example question]"
             )
         
-        response = self.ollama.generate_response(prompt, language=language)
+        response = self.gemini.generate_response(prompt, language=language)
         examples = []
         lines = response.strip().split('\n')
         for line in lines:
@@ -548,8 +569,8 @@ class RAGEnhancedConversationSystem:
         self.current_topic_category: str = ''
 
     def start_point(self):
-        print(f"🤖 AI: Connected to Ollama API at {self.ai.ollama.base_url}")
-        print(f"🤖 AI: Using model: {self.ai.ollama.model}")
+        print(f"🤖 AI: Connected to Gemini API")
+        print(f"🤖 AI: Using model: {self.ai.gemini.model}")
         print(f"🔍 RAG: Connected to database at {self.ai.rag_db.base_url}")
         print("🎯 AI: Specialized for Social and Health Issues with Local Resources")
         print("📝 Note: All questions and responses are stored for context continuity")
