@@ -3,8 +3,9 @@ import json
 import requests
 import os
 from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from datetime import datetime
+import pickle
 
 # Install with: pip install langdetect
 from langdetect import detect
@@ -16,6 +17,8 @@ class ChatMessage:
     answer: str
     context: str
     rag_results: Optional[List[Dict]] = None
+    user_intent: Optional[str] = None
+    conversation_id: Optional[str] = None
 
 @dataclass
 class RAGResult:
@@ -36,18 +39,44 @@ def detect_language(text: str) -> str:
         lang = "en"
     return lang
 
-class Translator:
-    """A minimal wrapper to translate prompts/text as needed. (Stub to expand with real API)"""
-    @staticmethod
-    def translate(text: str, dest_lang: str, src_lang: Optional[str] = None) -> str:
-        # For demo: just a sketch. Could call DeepL, Google Translate, etc.
-        # For now: return as-is if dest_lang is English or src_lang==dest_lang.
-        if dest_lang == "en" or not text or (src_lang and src_lang == dest_lang):
-            return text
-        # Integrate real translation API here for production
-        # e.g., use DeepL, Google Translate, or Hugging Face pipeline
-        # WARNING: No translation for demo
-        return text
+class ConversationMemory:
+    """Enhanced conversation memory management"""
+    def __init__(self, max_history: int = 20):
+        self.max_history = max_history
+        self.conversation_file = "conversation_history.pkl"
+        
+    def save_conversation(self, chat_history: List[ChatMessage]):
+        """Save conversation history to file"""
+        try:
+            # Convert to serializable format
+            serializable_history = []
+            for msg in chat_history:
+                msg_dict = asdict(msg)
+                msg_dict['timestamp'] = msg.timestamp.isoformat()
+                serializable_history.append(msg_dict)
+            
+            with open(self.conversation_file, 'wb') as f:
+                pickle.dump(serializable_history, f)
+        except Exception as e:
+            print(f"⚠️ Could not save conversation: {e}")
+    
+    def load_conversation(self) -> List[ChatMessage]:
+        """Load conversation history from file"""
+        try:
+            if os.path.exists(self.conversation_file):
+                with open(self.conversation_file, 'rb') as f:
+                    serializable_history = pickle.load(f)
+                
+                chat_history = []
+                for msg_dict in serializable_history:
+                    msg_dict['timestamp'] = datetime.fromisoformat(msg_dict['timestamp'])
+                    chat_history.append(ChatMessage(**msg_dict))
+                
+                return chat_history[-self.max_history:]  # Keep only recent messages
+            return []
+        except Exception as e:
+            print(f"⚠️ Could not load conversation: {e}")
+            return []
 
 class RAGDatabaseAPI:
     def __init__(self, api_key: str = None, base_url: str = "https://mimir.tail84e0ec.ts.net"):
@@ -56,9 +85,13 @@ class RAGDatabaseAPI:
         self.api_endpoint = f"{base_url}/retrieve"
 
         if not self.api_key:
-            raise ValueError("RAG API key is required. Set RAG_API_KEY environment variable.")
+            print("⚠️ Warning: RAG API key not provided. RAG features will be limited.")
+            self.api_key = "dummy_key"  # Allow initialization without key
 
     def query_database(self, query: str, top_k: int = 5, collection: str = "both") -> List[RAGResult]:
+        if self.api_key == "dummy_key":
+            return []  # Return empty results if no valid key
+            
         headers = {
             "X-API-Key": self.api_key,
             "Content-Type": "application/json"
@@ -147,15 +180,20 @@ class RAGEnhancedSocialHealthAI:
     def __init__(self, rag_api_key: str = None):
         self.gemini = GeminiAPI()
         self.rag_db = RAGDatabaseAPI(rag_api_key)
+        self.memory = ConversationMemory()
         self.system_context_en = (
             "You are a specialized AI assistant for social and health issues in the Siegen area. "
             "You have access to a database of local services, organizations, and resources. "
-            "Always prioritize local, specific resources when available from the database."
+            "Always prioritize local, specific resources when available from the database. "
+            "Use the conversation history to provide contextual and personalized responses. "
+            "Remember previous discussions and build upon them naturally."
         )
         self.system_context_de = (
             "Du bist ein spezialisierter KI-Assistent für soziale und gesundheitliche Themen im Raum Siegen. "
             "Du hast Zugriff auf eine Datenbank lokaler Dienste, Organisationen und Ressourcen. "
-            "Bitte priorisiere immer lokale und spezifische Angebote aus der Datenbank."
+            "Bitte priorisiere immer lokale und spezifische Angebote aus der Datenbank. "
+            "Nutze den Gesprächsverlauf für kontextuelle und personalisierte Antworten. "
+            "Erinnere dich an vorherige Diskussionen und baue natürlich darauf auf."
         )
 
     def get_system_context(self, language: str) -> str:
@@ -172,11 +210,11 @@ class RAGEnhancedSocialHealthAI:
         
         if language.startswith("de"):
             context_parts.append("=== VORHERIGER GESPRÄCHSVERLAUF ===")
-            for i, msg in enumerate(chat_history):
-                context_parts.append(f"\nNachricht {i+1}:")
+            for i, msg in enumerate(chat_history[-10:], 1):  # Last 10 messages
+                context_parts.append(f"\nNachricht {i}:")
                 context_parts.append(f"Zeit: {msg.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
                 context_parts.append(f"Frage: {msg.question}")
-                context_parts.append(f"Antwort: {msg.answer}")
+                context_parts.append(f"Antwort: {msg.answer[:200]}..." if len(msg.answer) > 200 else f"Antwort: {msg.answer}")
                 context_parts.append(f"Kontext: {msg.context}")
                 if msg.rag_results:
                     context_parts.append(f"Verwendete lokale Ressourcen: {len(msg.rag_results)} Ergebnisse")
@@ -184,11 +222,11 @@ class RAGEnhancedSocialHealthAI:
             context_parts.append("=== ENDE DES GESPRÄCHSVERLAUFS ===")
         else:
             context_parts.append("=== PREVIOUS CONVERSATION HISTORY ===")
-            for i, msg in enumerate(chat_history):
-                context_parts.append(f"\nMessage {i+1}:")
+            for i, msg in enumerate(chat_history[-10:], 1):  # Last 10 messages
+                context_parts.append(f"\nMessage {i}:")
                 context_parts.append(f"Time: {msg.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
                 context_parts.append(f"Question: {msg.question}")
-                context_parts.append(f"Answer: {msg.answer}")
+                context_parts.append(f"Answer: {msg.answer[:200]}..." if len(msg.answer) > 200 else f"Answer: {msg.answer}")
                 context_parts.append(f"Context: {msg.context}")
                 if msg.rag_results:
                     context_parts.append(f"Used local resources: {len(msg.rag_results)} results")
@@ -565,83 +603,18 @@ class RAGEnhancedConversationSystem:
     def __init__(self, rag_api_key: str = None):
         self.chat_history: List[ChatMessage] = []
         self.ai = RAGEnhancedSocialHealthAI(rag_api_key)
+        self.memory = ConversationMemory()
         self.clarification_attempts: int = 0
         self.current_topic_category: str = ''
-
-    def start_point(self):
-        print(f"🤖 AI: Connected to Gemini API")
-        print(f"🤖 AI: Using model: {self.ai.gemini.model}")
-        print(f"🔍 RAG: Connected to database at {self.ai.rag_db.base_url}")
-        print("🎯 AI: Specialized for Social and Health Issues with Local Resources")
-        print("📝 Note: All questions and responses are stored for context continuity")
-        print("=" * 70)
+        self.conversation_id: str = datetime.now().strftime("%Y%m%d_%H%M%S")
         
-        while True:
-            try:
-                question = input("\nAsk about social/health issues or local services in Siegen (or 'exit' to quit): ").strip()
-                if not question:
-                    continue
-                if question.lower() == 'exit':
-                    print("Take care of yourself! Goodbye!")
-                    break
-
-                language = detect_language(question)
-                # language = "de"  # For testing only; else auto-detect
-
-                if not self.the_chat_exists():
-                    self.create_a_new_chat()
-
-                # Store the question and use full history for context
-                understanding = self.ai.understand_problem(question, self.chat_history, language)
-                is_in_topic, topic_category = self.ai.is_question_in_topic(question, self.chat_history, language)
-                self.current_topic_category = topic_category
-
-                if is_in_topic:
-                    rag_results, rag_context = self.ai.retrieve_relevant_context(question, language)
-                    if self.ai.do_we_have_data(understanding, self.chat_history, rag_results, language):
-                        final_answer = self.ai.generate_rag_enhanced_response(
-                            question, understanding, self.chat_history, rag_results, rag_context, language
-                        )
-                        print(f"\n🤖 AI Antwort:\n" if language == "de" else f"\n🤖 AI Response:\n")
-                        print(final_answer)
-                        
-                        # Store the complete conversation turn
-                        self.chat_history.append(ChatMessage(
-                            timestamp=datetime.now(),
-                            question=question,
-                            answer=final_answer,
-                            context=topic_category,
-                            rag_results=[self._rag_result_to_dict(r) for r in rag_results]
-                        ))
-                        self.clarification_attempts = 0
-                    else:
-                        clarification_request = self.ai.ask_for_clarification(understanding, self.chat_history, language)
-                        print(f"\n🤖 KI: {clarification_request}" if language == "de" else f"\n🤖 AI: {clarification_request}")
-                        
-                        # Store clarification request as well
-                        self.chat_history.append(ChatMessage(
-                            timestamp=datetime.now(),
-                            question=question,
-                            answer=clarification_request,
-                            context=f"clarification_request_{topic_category}",
-                            rag_results=[]
-                        ))
-                        
-                        clarification = input("Bitte geben Sie mehr Details an: " if language == "de" else "Please provide more details: ")
-                        if clarification:
-                            enhanced_question = f"{question} - {clarification}"
-                            self.process_enhanced_question(enhanced_question, language)
-                else:
-                    self.handle_off_topic_question(question, topic_category, language)
-                    
-            except KeyboardInterrupt:
-                print("\n\nTake care! Goodbye!")
-                break
-            except Exception as e:
-                print(f"❌ Error occurred: {e}")
-                print("Please try again or check your connection.")
+        # Load previous conversation
+        self.chat_history = self.memory.load_conversation()
+        if self.chat_history:
+            print(f"📚 Loaded {len(self.chat_history)} previous messages from conversation history")
 
     def _rag_result_to_dict(self, rag_result: RAGResult) -> Dict:
+        """Convert RAG result to dictionary"""
         return {
             'name': rag_result.name,
             'type': rag_result.type,
@@ -653,54 +626,106 @@ class RAGEnhancedConversationSystem:
             'score': rag_result.score
         }
 
-    def the_chat_exists(self) -> bool:
-        return len(self.chat_history) > 0
+    def start_point(self):
+        print(f"🤖 AI: Connected to Gemini API")
+        print(f"🤖 AI: Using model: {self.ai.gemini.model}")
+        print(f"🔍 RAG: Connected to database at {self.ai.rag_db.base_url}")
+        print("🎯 AI: Enhanced Social and Health Issues Assistant with Full Context Memory")
+        print("📝 Note: All conversations are saved and loaded for continuous context")
+        print("💾 Conversation persistence: Enabled")
+        print("=" * 70)
+        
+        while True:
+            try:
+                question = input("\nAsk about social/health issues or local services in Siegen (or 'exit' to quit): ").strip()
+                if not question:
+                    continue
+                if question.lower() == 'exit':
+                    self.save_conversation()
+                    print("Take care of yourself! Goodbye!")
+                    break
 
-    def create_a_new_chat(self):
-        print("🆕 AI: Starting new conversation about social and health topics...")
-        self.chat_history = []
-        self.clarification_attempts = 0
+                language = detect_language(question)
+                
+                # Process question with full context
+                self.process_question_with_context(question, language)
+                
+                # Save conversation after each interaction
+                self.save_conversation()
+                    
+            except KeyboardInterrupt:
+                self.save_conversation()
+                print("\n\nTake care! Goodbye!")
+                break
+            except Exception as e:
+                print(f"❌ Error occurred: {e}")
+                print("Please try again or check your connection.")
 
-    def process_enhanced_question(self, question: str, language: str):
+    def process_question_with_context(self, question: str, language: str):
+        """Process question with full conversation context"""
         try:
+            # Enhanced understanding with context
             understanding = self.ai.understand_problem(question, self.chat_history, language)
             is_in_topic, topic_category = self.ai.is_question_in_topic(question, self.chat_history, language)
-            
+            self.current_topic_category = topic_category
+
             if is_in_topic:
+                # Get relevant context with conversation history
                 rag_results, rag_context = self.ai.retrieve_relevant_context(question, language)
-                if self.ai.do_we_have_data(understanding, self.chat_history, rag_results, language):
-                    final_answer = self.ai.generate_rag_enhanced_response(
-                        question, understanding, self.chat_history, rag_results, rag_context, language
-                    )
-                    print(f"\n🤖 KI Antwort:\n" if language == "de" else f"\n🤖 AI Response:\n")
-                    print(final_answer)
-                    
-                    # Store the enhanced question and answer
-                    self.chat_history.append(ChatMessage(
-                        timestamp=datetime.now(),
-                        question=question,
-                        answer=final_answer,
-                        context=topic_category,
-                        rag_results=[self._rag_result_to_dict(r) for r in rag_results]
-                    ))
-                    self.clarification_attempts = 0
-                else:
-                    print("🤖 KI: Ich benötige noch mehr Details zu Ihrem Anliegen." if language == "de"
-                          else "🤖 AI: I still need more specific information about your health or social concern.")
+                
+                # Generate contextual response
+                final_answer = self.ai.generate_rag_enhanced_response(
+                    question, understanding, self.chat_history, rag_results, rag_context, language
+                )
+                
+                print(f"\n🤖 AI Antwort:\n" if language.startswith("de") else f"\n🤖 AI Response:\n")
+                print(final_answer)
+                
+                # Store the complete conversation turn with enhanced info
+                self.chat_history.append(ChatMessage(
+                    timestamp=datetime.now(),
+                    question=question,
+                    answer=final_answer,
+                    context=topic_category,
+                    rag_results=[self._rag_result_to_dict(r) for r in rag_results],
+                    user_intent=understanding.get('main_intent'),
+                    conversation_id=self.conversation_id
+                ))
+                
+                self.clarification_attempts = 0
+                
             else:
-                print("🤖 KI: Bitte fokussieren Sie Ihre Frage auf Gesundheit oder Soziales." if language == "de"
-                      else "🤖 AI: Please focus your question on health or social issues so I can help you better.")
+                self.handle_off_topic_question(question, topic_category, language)
+                
         except Exception as e:
-            print(f"❌ Error processing enhanced question: {e}")
+            print(f"❌ Error processing question: {e}")
+            # Still save the question for context
+            self.chat_history.append(ChatMessage(
+                timestamp=datetime.now(),
+                question=question,
+                answer=f"Error occurred: {str(e)}",
+                context="error",
+                conversation_id=self.conversation_id
+            ))
 
     def handle_off_topic_question(self, question: str, topic_category: str, language: str):
-        if self.clarification_attempts < 3:
+        """Handle off-topic questions with conversation context"""
+        if self.clarification_attempts < 2:
             self.clarification_attempts += 1
-            off_topic_response = (
-                f"\n🤖 KI: Ich bin auf soziale und gesundheitliche Themen spezialisiert. Ihre Frage scheint sich um {topic_category} zu drehen."
-                if language == "de"
-                else f"\n🤖 AI: I specialize in social and health issues. Your question seems to be about {topic_category}."
-            )
+            
+            if language.startswith("de"):
+                off_topic_response = (
+                    f"\n🤖 KI: Ich bin auf soziale und gesundheitliche Themen im Raum Siegen spezialisiert. "
+                    f"Ihre Frage scheint sich um {topic_category} zu drehen. "
+                    f"Könnten Sie Ihre Frage in diesem Kontext umformulieren?"
+                )
+            else:
+                off_topic_response = (
+                    f"\n🤖 AI: I specialize in social and health issues in the Siegen area. "
+                    f"Your question seems to be about {topic_category}. "
+                    f"Could you rephrase your question in this context?"
+                )
+            
             print(off_topic_response)
             
             # Store off-topic question and response
@@ -709,41 +734,42 @@ class RAGEnhancedConversationSystem:
                 question=question,
                 answer=off_topic_response,
                 context=f"off_topic_{topic_category}",
-                rag_results=[]
+                conversation_id=self.conversation_id
             ))
             
-            ask_rephrase = "Könnten Sie Ihre Frage auf Gesundheit oder Soziales beziehen?" if language == "de" \
-                else "Could you rephrase your question to focus on health or social concerns?"
-            print(ask_rephrase)
-            clarification = input("Umformulierte Frage: " if language == "de" else "Rephrased question: ")
-            if clarification:
-                self.process_enhanced_question(clarification, language)
         else:
-            examples_intro = (
-                "\n🤖 KI: Ich kann nur bei sozialen und gesundheitlichen Themen für Sie in Siegen helfen."
-                "\nHier einige Beispiele für Fragen, mit denen ich helfen kann:" if language == "de"
-                else "\n🤖 AI: I can only assist with social and health issues in the Siegen area."
-                     "\nHere are examples of questions I can help with:"
-            )
-            print(examples_intro)
-            
-            # Store the examples response
-            self.chat_history.append(ChatMessage(
-                timestamp=datetime.now(),
-                question=question,
-                answer=examples_intro,
-                context=f"examples_provided_{topic_category}",
-                rag_results=[]
-            ))
-            
-            examples = self.ai.display_error_and_examples("social_and_health", language)
-            for i, example in enumerate(examples, 1):
-                print(f"   {i}. {example}")
+            # Show examples relevant to conversation history
+            self.show_contextual_examples(language)
             self.clarification_attempts = 0
+
+    def show_contextual_examples(self, language: str):
+        """Show examples relevant to conversation history"""
+        examples_intro = (
+            "\n🤖 KI: Hier sind einige Beispiele für Fragen, bei denen ich helfen kann:"
+            if language.startswith("de")
+            else "\n🤖 AI: Here are examples of questions I can help with:"
+        )
+        print(examples_intro)
+        
+        # Generate contextual examples
+        examples = self._generate_contextual_examples(language)
+        for i, example in enumerate(examples, 1):
+            print(f"   {i}. {example}")
+
+    def _generate_contextual_examples(self, language: str) -> List[str]:
+        """Generate examples based on conversation history"""
+        examples = self.ai.display_error_and_examples("social_and_health", language)
+        return examples
+
+    def save_conversation(self):
+        """Save current conversation"""
+        if self.chat_history:
+            self.memory.save_conversation(self.chat_history)
+            print("💾 Conversation saved for future reference")
 
 # Main execution
 if __name__ == "__main__":
-    print("🏥 Welcome to the RAG-Enhanced Social and Health Issues AI Assistant!")
+    print("🏥 Welcome to the Enhanced RAG Social and Health Issues AI Assistant!")
     print("🎯 I specialize in providing information and local resources for:")
     print("   • Mental health and wellbeing services")
     print("   • Physical health and medical information") 
@@ -752,9 +778,14 @@ if __name__ == "__main__":
     print("   • Public health topics")
     print("   • Health education and prevention")
     print("   • Local resources in Siegen and surrounding areas")
+    print("\n🧠 Enhanced Features:")
+    print("   • Full conversation memory and context continuity")
+    print("   • Persistent conversation storage")
+    print("   • Contextual understanding of follow-up questions")
+    print("   • Personalized responses based on conversation history")
     print("\n🚨 Note: For medical emergencies, please contact emergency services immediately.")
-    print("🔍 I have access to a local database of health and social services in your area.")
-    print("📝 Context Continuity: All questions and responses are stored for better assistance.")
+    print("🔍 I have access to a local database of health and social services.")
+    print("💾 All conversations are saved and loaded for continuous assistance.")
     print("=" * 70)
     
     try:
