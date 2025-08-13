@@ -1,22 +1,77 @@
+
+import torch
+from rag_retriever_worker import retriever_worker
+from dotenv import load_dotenv
+import uvicorn
+from pydantic import BaseModel, Field
+from fastapi import FastAPI, HTTPException, Depends, Header, status, Request
+from fastapi.responses import JSONResponse
+from typing import Dict, Optional, Any
+from contextlib import contextmanager
+import threading
+import asyncio
+import time
+import logging
+import traceback
+import psutil
+import gc
+import platform
+from datetime import datetime
+
 import os
 import secrets
-import torch
-import time
 import multiprocessing
-import asyncio
-import threading
-from contextlib import contextmanager
-from typing import Dict, Optional, Any
-from fastapi import FastAPI, HTTPException, Depends, Header, status
-from pydantic import BaseModel, Field
-import uvicorn
-from dotenv import load_dotenv
-
-from rag_retriever_worker import retriever_worker
-
-# This is the crucial change.
-# Set the start method at the module level to ensure it's set when Uvicorn imports this file.
 multiprocessing.set_start_method("spawn", force=True)
+
+# Configure logging based on environment variable
+VERBOSE_LOGGING = os.environ.get("VERBOSE_LOGGING", "").lower() in [
+    "true", "1", "yes", "y"]
+
+logging.basicConfig(
+    level=logging.DEBUG if VERBOSE_LOGGING else logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
+# Add a message about verbose logging status
+if VERBOSE_LOGGING:
+    logging.info("Verbose logging is ENABLED")
+else:
+    logging.info(
+        "Verbose logging is disabled. Set VERBOSE_LOGGING=true to enable detailed logs.")
+
+
+def log_system_info():
+    """Log detailed system information."""
+    logging.info(f"Platform: {platform.platform()}")
+    logging.info(f"Python version: {platform.python_version()}")
+
+    # Only log detailed system info in verbose mode
+    if not VERBOSE_LOGGING:
+        return
+
+    # CPU info
+    if hasattr(psutil, "cpu_count"):
+        logging.debug(
+            f"CPU cores: {psutil.cpu_count(logical=False)} physical, {psutil.cpu_count(logical=True)} logical")
+
+    # Memory info
+    mem = psutil.virtual_memory()
+    logging.debug(
+        f"System memory: Total={mem.total/(1024**3):.2f}GB, Available={mem.available/(1024**3):.2f}GB ({mem.percent}% used)")
+
+    # GPU info
+    if torch.cuda.is_available():
+        cuda_version = torch.__version__ if hasattr(
+            torch, "__version__") else "Unknown"
+        logging.debug(f"PyTorch version: {cuda_version}")
+        device_count = torch.cuda.device_count()
+        logging.debug(f"GPU devices available: {device_count}")
+        for i in range(device_count):
+            props = torch.cuda.get_device_properties(i)
+            logging.debug(
+                f"  GPU {i}: {props.name}, {props.total_memory/(1024**3):.2f}GB memory")
+
 
 load_dotenv()
 
@@ -104,15 +159,78 @@ app = FastAPI(
     version="2.3.0",
 )
 
+# Add request logging middleware
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    request_id = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    start_time = time.time()
+
+    # Only log request start in verbose mode
+    if VERBOSE_LOGGING:
+        logging.debug(
+            f"[{request_id}] Request started: {request.method} {request.url.path}")
+
+    try:
+        response = await call_next(request)
+        process_time = time.time() - start_time
+
+        log_level = logging.DEBUG if VERBOSE_LOGGING else logging.INFO
+        # Use appropriate level based on response status
+        if response.status_code >= 400:
+            logging.warning(
+                f"[{request_id}] {request.method} {request.url.path} - Status: {response.status_code} - Time: {process_time:.3f}s")
+        elif VERBOSE_LOGGING:
+            logging.debug(
+                f"[{request_id}] Request completed: {request.method} {request.url.path} - Status: {response.status_code} - Time: {process_time:.3f}s")
+
+        return response
+    except Exception as e:
+        process_time = time.time() - start_time
+        logging.error(
+            f"[{request_id}] Request failed: {request.method} {request.url.path} - Error: {str(e)} - Time: {process_time:.3f}s")
+
+        # Only log traceback in verbose mode
+        if VERBOSE_LOGGING:
+            logging.error(
+                f"[{request_id}] Exception traceback: {traceback.format_exc()}")
+
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"detail": f"Internal server error: {str(e)}"},
+        )
+
+# Exception handler for unhandled exceptions
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logging.error(f"Unhandled exception: {str(exc)}")
+
+    # Only log traceback in verbose mode
+    if VERBOSE_LOGGING:
+        logging.error(f"Exception traceback: {traceback.format_exc()}")
+
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "detail": "An unexpected error occurred. Check server logs for details."}
+    )
+
 
 @app.on_event("startup")
 def startup_event():
+    logging.info("==== RAG Retriever API Starting ====")
+    log_system_info()
+
     monitor_thread = threading.Thread(
         target=inactivity_monitor_task,
         args=(retriever_manager, monitor_stop_event),
         daemon=True
     )
     monitor_thread.start()
+    logging.info("Inactivity monitor thread started")
 
 
 @app.on_event("shutdown")
@@ -169,33 +287,125 @@ async def health_check():
 @app.post("/retrieve", tags=["Retrieval"])
 async def retrieve(request: RetrievalRequest, api_key: str = Depends(get_api_key)) -> Dict[str, Any]:
     """Sends a query to the retriever worker and returns the results."""
+    request_id = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    start_time = time.time()
+
+    # Basic info logging is always enabled
+    if VERBOSE_LOGGING:
+        logging.debug(
+            f"[{request_id}] New retrieve request: query='{request.query[:50]}{'...' if len(request.query) > 50 else ''}', top_k={request.top_k}")
+    else:
+        logging.info(
+            f"Processing query (length: {len(request.query)}, top_k: {request.top_k})")
+
+    # Only log memory status in verbose mode
+    if VERBOSE_LOGGING:
+        # Log memory status at request start
+        mem = psutil.virtual_memory()
+        logging.debug(
+            f"[{request_id}] System memory at request start: {mem.available/(1024**3):.2f}GB available ({mem.percent}% used)")
+
+        if torch.cuda.is_available():
+            # Log GPU memory at request start
+            for i in range(torch.cuda.device_count()):
+                free_mem = torch.cuda.memory_reserved(
+                    i) - torch.cuda.memory_allocated(i)
+                total_mem = torch.cuda.get_device_properties(i).total_memory
+                logging.debug(
+                    f"[{request_id}] GPU {i} memory at request start: {free_mem/(1024**3):.2f}GB free of {total_mem/(1024**3):.2f}GB total")
+
     try:
         with retriever_manager.get_worker() as (req_q, res_q):
+            if VERBOSE_LOGGING:
+                logging.debug(
+                    f"[{request_id}] Worker acquired, sending request to worker")
             worker_payload = request.dict()
             await asyncio.to_thread(req_q.put, worker_payload)
+
+            if VERBOSE_LOGGING:
+                logging.debug(f"[{request_id}] Waiting for worker response")
             results = await asyncio.to_thread(res_q.get)
+            if VERBOSE_LOGGING:
+                logging.debug(f"[{request_id}] Received response from worker")
 
         if "error" in results:
             error_type = results.get("error")
             error_message = results.get(
                 "message", "An unknown error occurred in the worker.")
 
+            logging.error(
+                f"[{request_id}] Worker returned error: {error_type} - {error_message}")
+
             if error_type == "OutOfMemoryError":
+                # Always log detailed memory info on OOM error, even without verbose mode
+                mem = psutil.virtual_memory()
+                logging.error(
+                    f"[{request_id}] OOM ERROR - System memory: {mem.available/(1024**3):.2f}GB available ({mem.percent}% used)")
+
+                if torch.cuda.is_available():
+                    for i in range(torch.cuda.device_count()):
+                        free_mem = torch.cuda.memory_reserved(
+                            i) - torch.cuda.memory_allocated(i)
+                        total_mem = torch.cuda.get_device_properties(
+                            i).total_memory
+                        logging.error(
+                            f"[{request_id}] OOM ERROR - GPU {i} memory: {free_mem/(1024**3):.2f}GB free of {total_mem/(1024**3):.2f}GB total")
+
                 raise HTTPException(
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=error_message)
             else:
                 raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                                     detail=f"Error in worker: {error_message}")
 
+        result_count = len(results.get("results", []))
+        elapsed = time.time() - start_time
+
+        # Always log basic completion info
+        logging.info(
+            f"Request completed in {elapsed:.2f}s, returned {result_count} results")
+
+        # Additional details only in verbose mode
+        if VERBOSE_LOGGING:
+            logging.debug(
+                f"[{request_id}] Request details: query='{request.query[:30]}{'...' if len(request.query) > 30 else ''}'")
+            if "query_info" in results:
+                query_info = results["query_info"]
+                logging.debug(f"[{request_id}] Query analysis: search_type={query_info.get('search_type')}, " +
+                              f"detected_topics={query_info.get('detected_topics')}, " +
+                              f"detected_locations={query_info.get('detected_locations')}")
+
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+        gc.collect()
 
         return results
+
     except Exception as e:
+        elapsed = time.time() - start_time
+        logging.error(
+            f"[{request_id}] Request failed after {elapsed:.2f}s: {str(e)}")
+
+        # Only log full traceback in verbose mode
+        if VERBOSE_LOGGING:
+            logging.error(
+                f"[{request_id}] Exception traceback: {traceback.format_exc()}")
+
         if isinstance(e, HTTPException):
             raise e
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail=f"Error processing request: {str(e)}")
+
+    finally:
+        # Clean up regardless of success or failure
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        gc.collect()
+
+        # Log memory cleanup in verbose mode only
+        if VERBOSE_LOGGING:
+            mem = psutil.virtual_memory()
+            logging.debug(
+                f"[{request_id}] Final system memory: {mem.available/(1024**3):.2f}GB available ({mem.percent}% used)")
 
 
 if __name__ == "__main__":

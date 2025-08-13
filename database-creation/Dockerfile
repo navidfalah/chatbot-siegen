@@ -2,6 +2,9 @@
 # Use the official python-slim image as a lean base with Python pre-installed.
 FROM python:3.12-slim AS builder
 
+# To enable verbose logging, set VERBOSE_LOGGING=true when running the container:
+# docker run -e VERBOSE_LOGGING=true -p 8000:8000 rag-api
+
 ENV PYTHONUNBUFFERED=1
 ENV HF_HOME="/app/cache/huggingface"
 ENV VENV_PATH="/opt/venv"
@@ -20,7 +23,8 @@ RUN apt-get update && \
 # Install Python dependencies
 COPY requirements-api.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128 && \
+    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 && \
+    pip install --no-cache-dir psutil && \
     pip install --no-cache-dir -r requirements-api.txt
 
 # Copy application code and cache models
@@ -34,6 +38,11 @@ RUN python cache_models.py && \
 # Stage 2: The Final Image
 # Start from the same lean python-slim base.
 FROM python:3.12-slim
+
+# Default to disabled verbose logging (can be overridden at runtime)
+ENV VERBOSE_LOGGING=false
+
+ENV PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 ENV PYTHONUNBUFFERED=1
 ENV HF_HOME="/app/cache/huggingface"

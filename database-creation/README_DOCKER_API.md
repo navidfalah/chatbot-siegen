@@ -66,6 +66,7 @@ Configure the following variables using the `-e` flag with `docker run`:
 | `QDRANT_HOST`      | The hostname or IP address of your running Qdrant server.           | host.docker.internal         |
 | `QDRANT_PORT`      | The port your Qdrant server is listening on.                        | 6333                         |
 | `INACTIVITY_TIMEOUT` | The time in seconds before the inactive retriever worker process is automatically shut down. Defaults to 600. | 300 |
+| `VERBOSE_LOGGING`  | Enable detailed diagnostic logging, including GPU memory usage tracking. Useful for debugging and performance monitoring. Defaults to false. | true |
 
 > **Note on QDRANT_HOST:** If your Qdrant database is another Docker container on the same custom network, you can use its container name (e.g., `qdrant-db`). If Qdrant is running on your host machine, use `host.docker.internal` to allow the container to connect to it.
 
@@ -112,3 +113,24 @@ curl -X POST "http://localhost:8000/retrieve" \
 - `top_k` (**int**, optional, default: 5): The final number of results to return after reranking.
 - `collection` (**str**, optional, default: None): Force the search to a specific collection. Accepts `location`, `guideline`, or `both`. If null, intent detection is used.
 - `debug` (**bool**, optional, default: False): Set to true to receive additional debug information in the server logs.
+
+### Enabling Verbose Logging
+
+To diagnose performance issues, memory usage, or to troubleshoot GPU memory exhaustion, you can run the container with verbose logging enabled:
+
+```sh
+docker run -p 8000:8000 \
+    -e VERBOSE_LOGGING=true \
+    -e RAG_API_KEY="your-secret-api-key" \
+    -e QDRANT_HOST="host.docker.internal" \
+    --name my-rag-api \
+    rag-api:latest
+```
+
+When verbose logging is enabled:
+- Detailed GPU memory usage is tracked at key points in processing
+- System memory statistics are logged
+- Processing times for each operation are recorded
+- Full stack traces are included for errors
+
+This is particularly useful when diagnosing "GPU memory exhausted" errors as it provides detailed information about memory usage before the error occurs.
